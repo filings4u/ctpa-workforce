@@ -1,5 +1,14 @@
+document.addEventListener('DOMContentLoaded',()=>document.body.classList.remove('loading'));
 (()=>{'use strict';
 const C=window.PORTAL_CONFIG;
+const STORAGE_SCHEMA='workforce-separated-v3';
+if(localStorage.getItem('s4u_workforce_storage_schema')!==STORAGE_SCHEMA){
+  ['ctpa_workforce','employer_workforce','employee_workforce','driver_workforce'].forEach(code=>{
+    localStorage.removeItem(`s4u_${code}_membership`);
+    localStorage.removeItem(`s4u_${code}_subscription`);
+  });
+  localStorage.setItem('s4u_workforce_storage_schema',STORAGE_SCHEMA);
+}
 const sb=window.supabase.createClient(C.workforceUrl,C.workforceKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
