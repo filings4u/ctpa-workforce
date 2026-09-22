@@ -263,6 +263,7 @@ function renderMgmt(p){
 
 function managementActions(p){
   if(C.kind==='self')return;
+  if(C.kind==='ctpa'&&p==='employers')addAction('Add Employer',()=>formModal('Add Employer',employerFields,{},async v=>invoke(apiName(),{action:'save_employer',employer:v})));
   if(p==='people')addAction('Add Employee / Driver',()=>formModal('Add Employee / NON-DOT Driver',employeeFields(data.employers||[]),{},async v=>invoke(apiName(),{action:'save_employee',employee:{...v,safety_sensitive:v.safety_sensitive==='true'}})));
   if(p==='programs')addAction('Add NON-DOT Program',()=>formModal('Add NON-DOT Program',programFields(data.employers||[]),{},async v=>invoke(apiName(),{action:'save_program',program:v})));
   if(p==='pools')addAction('Add NON-DOT Pool',()=>formModal('Add NON-DOT Random Testing Pool',poolFields(data.employers||[],data.programs||[]),{},async v=>invoke(apiName(),{action:'save_pool',pool:v})));
