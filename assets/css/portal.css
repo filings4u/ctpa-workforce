@@ -356,10 +356,3 @@ body[data-portal-page="employer-billing"] .content{padding-top:24px}
 
 /* Cloudflare Turnstile — shared DOT portal login */
 .turnstile-wrap{min-height:67px;margin:13px 0 5px;display:flex;align-items:center;justify-content:center;overflow:hidden}.turnstile-wrap>div{width:100%}.login-card .btn[disabled]{opacity:.55;cursor:not-allowed}@media(max-width:420px){.turnstile-wrap{margin-left:-2px;margin-right:-2px}}
-
-/* NON-DOT Workforce brand treatment — no DOT logo asset */
-.brand-wordmark{display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;font-weight:900;letter-spacing:-.04em;color:#174b86;line-height:1}
-.brand-screenings{font-size:25px}.brand-four{font-size:30px;color:#ef6c00}.brand-u{font-size:25px}.brand-sep{font-size:22px;color:#9fb3c7;margin:0 5px}.brand-workforce{font-size:15px;letter-spacing:.03em;color:#102f55}
-.side-wordmark{padding:22px 10px}.side .brand{display:flex;align-items:center;justify-content:center;min-height:86px;background:#fff}
-.login-wordmark{margin:10px auto 30px;transform:scale(1.02)}
-@media(max-width:700px){.brand-screenings,.brand-u{font-size:21px}.brand-four{font-size:26px}.brand-workforce{font-size:13px}.brand-sep{font-size:18px;margin:0 3px}}
