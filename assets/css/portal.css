@@ -1,7 +1,11 @@
 
 :root{--navy:#102f55;--navy2:#0b2747;--blue:#24467f;--orange:#ef6c00;--ink:#183653;--muted:#6d7f92;--line:#dce5ef;--soft:#f4f7fb;--white:#fff;--good:#17764a;--warn:#a86106;--bad:#a72d2d;--shadow:0 14px 34px rgba(24,54,83,.08)}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:#eef3f8}button,input,select,textarea{font:inherit}a{text-decoration:none;color:inherit}body.loading{visibility:hidden}
-.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}.side{position:fixed;inset:0 auto 0 0;width:250px;background:linear-gradient(180deg,var(--navy2),var(--navy));color:#dae7f3;display:flex;flex-direction:column;z-index:30}.brand{height:68px;display:flex;align-items:center;justify-content:center;padding:8px 18px;background:#fff;border-bottom:1px solid #dce5ef}.brand img{display:block;max-width:190px;width:100%;max-height:58px;height:auto;object-fit:contain;object-position:center center}.nav{overflow:auto;flex:1;padding:8px 10px 12px}.nav-title{padding:10px 12px 8px;color:#8fa9c3;font-size:9px;text-transform:uppercase;font-weight:900;letter-spacing:.12em}.nav a{display:flex;gap:11px;align-items:center;padding:10px 12px;border-radius:9px;margin:3px 0;font-size:12.5px;font-weight:720}.nav a:hover{background:rgba(255,255,255,.07);color:#fff}.nav a.active{background:#fff;color:var(--navy);box-shadow:inset 4px 0 0 var(--orange)}.nav .ico{width:20px;text-align:center}.side-foot{border-top:1px solid rgba(255,255,255,.1);padding:12px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:#eef3f8}button,input,select,textarea{font:inherit}a{text-decoration:none;color:inherit}body.loading{visibility:visible;overflow:hidden;background:#f4f6f8}
+body.loading>.app{visibility:hidden;opacity:0;pointer-events:none}
+body.loading::before{content:"";position:fixed;inset:0;z-index:9998;background:#f4f6f8}
+body.loading::after{content:"";position:fixed;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;z-index:9999;border:3px solid #d8dee6;border-top-color:#7b8794;border-radius:50%;animation:s4uPortalSpin .7s linear infinite}
+@keyframes s4uPortalSpin{to{transform:rotate(360deg)}}
+.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}.side{position:fixed;inset:0 auto 0 0;width:250px;background:linear-gradient(180deg,var(--navy2),var(--navy));color:#dae7f3;display:flex;flex-direction:column;z-index:30}.brand{height:68px;display:flex;align-items:center;justify-content:center;padding:8px 18px;background:#fff;border-bottom:1px solid #dce5ef}.brand img{display:block;width:auto;height:auto;max-width:190px;max-height:50px;object-fit:contain;object-position:center center;image-rendering:auto;visibility:hidden;opacity:0;transition:opacity .12s ease}.brand img.brand-logo-ready{visibility:visible;opacity:1}.nav{overflow:auto;flex:1;padding:8px 10px 12px}.nav-title{padding:10px 12px 8px;color:#8fa9c3;font-size:9px;text-transform:uppercase;font-weight:900;letter-spacing:.12em}.nav a{display:flex;gap:11px;align-items:center;padding:10px 12px;border-radius:9px;margin:3px 0;font-size:12.5px;font-weight:720}.nav a:hover{background:rgba(255,255,255,.07);color:#fff}.nav a.active{background:#fff;color:var(--navy);box-shadow:inset 4px 0 0 var(--orange)}.nav .ico{width:20px;text-align:center}.side-foot{border-top:1px solid rgba(255,255,255,.1);padding:12px}
 .main{grid-column:2;min-width:0}.top{height:68px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 24px;position:sticky;top:0;z-index:20}.top-left,.top-right{display:flex;align-items:center;gap:10px;min-width:0}.menu{display:none;border:0;background:none;color:var(--navy);font-size:22px;cursor:pointer}.crumb{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pill{padding:6px 9px;background:#edf3fb;color:var(--blue);border-radius:999px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.signout{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 10px;font-size:10px;cursor:pointer}
 .content{padding:24px;max-width:1540px;margin:0 auto}.hero{background:linear-gradient(120deg,#0f315b,#184f80 70%,#24467f);color:#fff;border-radius:16px;padding:24px 26px;box-shadow:var(--shadow);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;right:-50px;bottom:-100px;width:280px;height:280px;border:40px solid rgba(239,108,0,.17);border-radius:50%}.hero-kicker{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:#ffc28e}.hero h1{margin:7px 0 7px;font-size:29px}.hero p{margin:0;max-width:840px;color:#dce9f7;font-size:12.5px;line-height:1.6}.hero-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;position:relative;z-index:1}
 .btn{border:0;border-radius:9px;padding:10px 13px;font-size:10.5px;font-weight:850;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}.btn.primary{background:var(--orange);color:#fff}.btn.secondary{background:#fff;color:var(--navy)}.btn.ghost{background:#edf3fb;color:var(--blue)}
@@ -331,28 +335,81 @@ body[data-portal-page="support"] .section{margin-top:18px}.support-shell{display
   .report-metrics{grid-template-columns:1fr!important}
 }
 
-/* C/TPA billing refinements — Account Billing + full Employer invoicing */
-body[data-portal-page="billing"] #content,
-body[data-portal-page="employer-billing"] #content{margin-top:16px}
-.account-billing-shell,.ctpa-billing-shell{display:grid;gap:14px}
-.account-billing-shell .billing-metrics,.ctpa-billing-shell .billing-metrics{margin:0}
-.account-billing-shell .billing-toolbar,.ctpa-billing-shell .billing-toolbar{margin:0}
-.account-billing-shell .panel,.ctpa-billing-shell .panel{margin:0}
-.account-billing-note{margin:0}
-.billing-capability-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
-.billing-capability{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
-.billing-capability>div{min-width:150px}.billing-capability small{display:block;font-size:8.5px;font-weight:900;letter-spacing:.08em;color:var(--muted)}
-.billing-capability strong{display:block;margin-top:5px;color:var(--navy);font-size:13px}.billing-capability p{margin:0;color:var(--muted);font-size:10px;line-height:1.5;max-width:620px}
-.billing-capability.good{border-color:#b9ddc8;background:#f7fcf9}.billing-capability.good strong{color:var(--good)}
-.billing-capability.warn{border-color:#eed6ae;background:#fffaf1}.billing-capability.warn strong{color:var(--warn)}
-.billing-bottom-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.invoice-payment-history{display:grid;gap:7px;margin-top:7px}.invoice-payment-history>div{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid #edf1f5;font-size:10px}.invoice-payment-history>div:last-child{border-bottom:0}.invoice-payment-history span{color:var(--muted)}.invoice-payment-history strong{color:var(--navy)}
-body[data-portal-page="billing"] .hero,
-body[data-portal-page="employer-billing"] .hero{margin-bottom:0}
-body[data-portal-page="billing"] .content,
-body[data-portal-page="employer-billing"] .content{padding-top:24px}
-@media(max-width:900px){.billing-capability-grid,.billing-bottom-grid{grid-template-columns:1fr}.billing-capability{flex-direction:column;gap:6px}}
-@media(max-width:820px){body[data-portal-page="billing"] .content,body[data-portal-page="employer-billing"] .content{padding-top:12px}}
+/* Employer DOT: C/TPA customer portal branding inherits an eligible C/TPA brand. */
+body[data-white-label="true"] .brand{background:#fff}
+body[data-white-label="true"] .hero{background:linear-gradient(120deg,var(--navy2),var(--navy) 70%,var(--blue))}
+body[data-white-label="true"] .hero:after{border-color:rgba(255,255,255,.12)}
+body[data-white-label="true"] .hero-kicker{color:var(--orange)}
+body[data-white-label="true"] .pill{color:var(--blue);background:#edf3fb}
+
+/* Employer invoice portal */
+.invoice-readonly-note{margin-top:14px}.invoice-metrics{margin-bottom:0}.invoices-head{align-items:center}.invoices-head .billing-search{max-width:500px}.invoice-view-actions{min-width:150px}.invoice-view-actions .mini-btn{white-space:nowrap}.billing-table td small{display:block;margin-top:3px;color:var(--muted);font-size:9px}@media(max-width:820px){.invoices-head{align-items:stretch;flex-direction:column}.invoices-head .billing-search{width:100%;max-width:none}.invoice-view-actions{min-width:0}}
+
+/* Company/profile summary values: compact readable typography for long names and emails. */
+.profile-metrics .metric strong{font-size:17px;line-height:1.25;overflow-wrap:anywhere;word-break:normal}
+.profile-metrics .metric{min-width:0}
+@media(max-width:820px){.profile-metrics .metric strong{font-size:16px}}
+
+/* Employer DOT C/TPA-customer polish: compact spacing, full worker form, and persistent active nav. */
+.nav a.active,.mobile-nav-links a.active{font-weight:850}
+.modal.modal-wide{width:min(980px,100%);max-height:min(88vh,920px);overflow:auto}
+.modal.modal-wide .modal-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.modal textarea{width:100%;border:1px solid #c8d6e5;border-radius:9px;padding:10px 11px;font:inherit;color:var(--ink);resize:vertical;background:#fff}
+body[data-portal-page="pools"] .metrics{margin-top:0}
+body[data-portal-page="pools"] .pool-layout{margin-top:12px;gap:12px}
+body[data-portal-page="pools"] .pool-cards{padding:10px 12px}
+body[data-portal-page="pools"] .pool-cards>.empty{padding:20px 12px}
+body[data-portal-page="pools"] .panel-head{padding-top:12px;padding-bottom:12px}
+body[data-portal-page="notifications"] .notification-metrics{margin-bottom:0}
+body[data-portal-page="notifications"] .notification-inbox{margin-top:12px}
+.notification-inbox-head{align-items:center}
+.notification-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.notification-head-actions .btn{white-space:nowrap}
+body[data-portal-page="order_services"] .service-grid{margin-top:12px}
+.ctpa-service-notice{margin-bottom:0}
+.service-source{display:block;color:var(--orange);font-size:8.5px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.service-meta{font-size:9px;color:var(--muted);margin:5px 0 12px}
+.service-empty{grid-column:1/-1}
+@media(max-width:820px){.modal.modal-wide .modal-grid{grid-template-columns:1fr 1fr}.notification-inbox-head{align-items:flex-start}.notification-head-actions{width:100%;justify-content:flex-start}}
+@media(max-width:560px){.modal.modal-wide .modal-grid{grid-template-columns:1fr}.modal.modal-wide{max-height:92vh}.notification-head-actions{align-items:stretch;flex-direction:column}.notification-head-actions .btn{width:100%}}
+
+
+/* Employer DOT people editor + compact C/TPA customer pool spacing. */
+.people-panel .worker-actions{width:92px;white-space:nowrap}
+.people-panel td strong{color:var(--ink)}
+body[data-portal-page="pools"] .notice{padding:9px 13px;margin-bottom:0;line-height:1.4}
+body[data-portal-page="pools"] .metrics{gap:8px;margin-top:0}
+body[data-portal-page="pools"] .metric{padding:11px 13px}
+body[data-portal-page="pools"] .metric strong{font-size:21px;margin-top:5px}
+body[data-portal-page="pools"] .metric span{margin-top:2px}
+body[data-portal-page="pools"] .section{margin-top:8px}
+body[data-portal-page="pools"] .pool-layout{margin-top:0;gap:8px}
+body[data-portal-page="pools"] .panel-head{padding:9px 14px}
+body[data-portal-page="pools"] .panel-head p{margin-top:2px}
+body[data-portal-page="pools"] .pool-cards{padding:8px 12px}
+body[data-portal-page="pools"] .pool-cards>.empty{padding:10px 4px;text-align:left}
+body[data-portal-page="pools"] .table-wrap th{padding-top:8px;padding-bottom:8px}
+body[data-portal-page="pools"] .table-wrap td{padding-top:8px;padding-bottom:8px}
+body[data-portal-page="pools"] .table-wrap .empty{padding:10px 6px}
+body[data-portal-page="pools"] .table-wrap tbody tr:only-child td:has(.empty){padding-top:0;padding-bottom:0}
+@media(max-width:820px){body[data-portal-page="pools"] .metric{padding:10px 12px}.people-panel .worker-actions{width:auto}}
+
+/* Employer DOT pools: consistent breathing room between customer-facing blocks. */
+body[data-portal-page="pools"] #content{display:block}
+body[data-portal-page="pools"] #content>.notice{margin:0 0 12px!important;padding:10px 14px!important;line-height:1.5}
+body[data-portal-page="pools"] #content>.metrics{margin:0 0 12px!important;gap:10px}
+body[data-portal-page="pools"] #content>.pool-layout{margin:0!important;gap:12px!important}
+body[data-portal-page="pools"] .metric{padding:12px 14px!important}
+body[data-portal-page="pools"] .pool-layout>.panel+.panel{margin-top:0}
+body[data-portal-page="pools"] .panel-head{padding:11px 15px!important}
+body[data-portal-page="pools"] .pool-cards{padding:12px 15px!important}
+body[data-portal-page="pools"] .pool-cards>.empty{padding:14px 4px!important;text-align:left}
+body[data-portal-page="pools"] .table-wrap td{padding-top:10px!important;padding-bottom:10px!important}
+body[data-portal-page="pools"] .table-wrap .empty{padding:14px 6px!important}
+@media(max-width:820px){body[data-portal-page="pools"] #content>.notice,body[data-portal-page="pools"] #content>.metrics{margin-bottom:10px!important}body[data-portal-page="pools"] #content>.pool-layout{gap:10px!important}}
+
+/* Employer-owned DOT agency consent / acknowledgment editor */
+.consent-ownership{margin-bottom:12px}.consent-metrics{margin-bottom:12px}.consent-template-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:14px}.consent-template-card{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;min-width:0}.consent-template-card h3{font-size:12px;margin:9px 0 6px;color:var(--ink)}.consent-template-card p{font-size:9.5px;line-height:1.5;color:var(--muted);min-height:42px}.consent-template-card>small{display:block;color:var(--blue);font-size:8.7px;font-weight:800;margin:8px 0}.agency-tag,.form-kind{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:7.8px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.agency-tag{background:#eaf1fb;color:var(--blue)}.form-kind{background:#f1f4f7;color:var(--muted);margin-left:5px}.template-note{font-size:8.7px;line-height:1.45;color:#6a4a00;background:#fff7df;border:1px solid #f2df9c;border-radius:8px;padding:8px;margin:8px 0 10px}.consent-template-card .btn{width:100%;margin-top:4px}.consent-editor .field small{display:block;margin-top:5px;font-size:8.5px;line-height:1.45;color:var(--muted)}.modal-help{font-size:9.5px;color:var(--muted);margin:-4px 0 14px}.consent-employee-list{border:1px solid var(--line);border-radius:10px;max-height:340px;overflow:auto;margin-top:12px}.consent-employee-list label{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #edf1f5;font-size:10px}.consent-employee-list label:last-child{border-bottom:0}.consent-employee-list small{color:var(--muted)}.consent-check-all{font-weight:800;background:#f7f9fb}.row-actions .danger{color:var(--bad);border-color:#efc6c6}@media(max-width:1050px){.consent-template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.consent-template-grid{grid-template-columns:1fr;padding:10px}.consent-template-card p{min-height:0}.consent-employee-list label{grid-template-columns:20px 1fr}.consent-employee-list label small{grid-column:2}}
 
 /* Cloudflare Turnstile — shared DOT portal login */
 .turnstile-wrap{min-height:67px;margin:13px 0 5px;display:flex;align-items:center;justify-content:center;overflow:hidden}.turnstile-wrap>div{width:100%}.login-card .btn[disabled]{opacity:.55;cursor:not-allowed}@media(max-width:420px){.turnstile-wrap{margin-left:-2px;margin-right:-2px}}

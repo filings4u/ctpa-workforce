@@ -1,83 +1,96 @@
 (()=>{'use strict';
 const C=window.PORTAL_CONFIG;
-const sb=window.supabase.createClient(C.workforceUrl,C.workforceKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const $=(s,r=document)=>r.querySelector(s);
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const norm=v=>String(v||'').toLowerCase().replaceAll('-','_');
-const pretty=v=>String(v??'—').replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase());
-const fmt=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?esc(v):new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(d)};
-const money=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(v||0));
-const statusClass=v=>/active|complete|completed|paid|eligible|final|negative|acknowledged|available|enabled/i.test(String(v))?'good':/cancel|inactive|terminated|positive|suspended|overdue|failed|closed/i.test(String(v))?'bad':'warn';
-const badge=v=>`<span class="badge ${statusClass(v)}">${esc(pretty(v))}</span>`;
-const page=()=>norm(document.body?.dataset?.portalPage||location.pathname.split('/').pop()?.replace('.html','')||'dashboard');
-const storageKey=()=>`s4u_${C.portalCode}_${C.storageVersion||'v1'}`;
-const SUPPORT_CTX_KEY='s4u_support_context';
-function supportCtxRead(){try{return JSON.parse(sessionStorage.getItem(SUPPORT_CTX_KEY)||'{}')||{}}catch{return{}}}
-function supportCtxWrite(patch={}){try{sessionStorage.setItem(SUPPORT_CTX_KEY,JSON.stringify({...supportCtxRead(),...patch}))}catch{}}
-function rememberSupportPage(){if(page()==='support')return;supportCtxWrite({page_url:location.href,page_title:document.title,page_id:page(),captured_at:new Date().toISOString()})}
-function rememberSupportError(message,source='page'){const m=String(message||'').trim();if(!m||m.length<2)return;supportCtxWrite({error_message:m.slice(0,12000),error_source:source,error_at:new Date().toISOString(),page_url:location.href,page_title:document.title,page_id:page()})}
-function installSupportDiagnostics(){
-  window.addEventListener('error',e=>rememberSupportError(e?.message||e?.error?.message||'JavaScript error','window.error'),true);
-  window.addEventListener('unhandledrejection',e=>rememberSupportError(e?.reason?.message||e?.reason||'Unhandled promise rejection','unhandledrejection'));
-  const scan=()=>{if(page()==='support')return;const sels=['#error','[data-error]','.testing-modal-error','.documents-error','.selection-error','.employer-modal-error','[role="alert"]'];for(const el of document.querySelectorAll(sels.join(','))){const t=String(el.textContent||'').trim();if(t&&!el.hidden&&t.length>1){rememberSupportError(t,'page-message');break}}};
-  const start=()=>{rememberSupportPage();scan();const mo=new MutationObserver(scan);mo.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['hidden','class']});};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+const MAIN_URL='https://rgsrubdtljyxmnihwlah.supabase.co',MAIN_KEY='sb_publishable_-pG3ePRGckIiK5ncn2hzgQ_jeJF1xFr';
+const STORAGE_SCHEMA='workforce-nondot-dot-shell-v1';
+if(localStorage.getItem('s4u_workforce_storage_schema')!==STORAGE_SCHEMA){
+  ['ctpa_workforce','employer_workforce','employee_workforce','driver_workforce'].forEach(code=>{
+    localStorage.removeItem(`s4u_${code}_membership`);
+    localStorage.removeItem(`s4u_${code}_subscription`);
+  });
+  localStorage.setItem('s4u_workforce_storage_schema',STORAGE_SCHEMA);
 }
-installSupportDiagnostics();
-const storedObj=()=>{try{return JSON.parse(localStorage.getItem(storageKey())||'{}')||{}}catch{return{}}};
-const stored=()=>storedObj().membership_id||'';
-const storedSub=()=>storedObj().subscription_id||'';
-const saveCtx=(m,s)=>{if(m)localStorage.setItem(storageKey(),JSON.stringify({membership_id:m,subscription_id:s||''}))};
-const FULL_NAV=[
-{id:'dashboard',label:'Dashboard',icon:'▦',href:'/dashboard.html'},
-{id:'employers',label:'Employers',icon:'▣',href:'/employers.html'},
-{id:'owner-operators',label:'NON-DOT Drivers',icon:'◉',href:'/owner-operators.html'},
-{id:'people',label:'Employees / NON-DOT Drivers',icon:'●',href:'/people.html'},
-{id:'programs',label:'NON-DOT Programs',icon:'◆',href:'/programs.html'},
-{id:'pools',label:'NON-DOT Pools',icon:'◎',href:'/pools.html'},
-{id:'selections',label:'Random Selections',icon:'⌁',href:'/selections.html'},
-{id:'testing',label:'NON-DOT Testing',icon:'✓',href:'/testing.html'},
-{id:'results',label:'NON-DOT Results',icon:'◈',href:'/results.html'},
-{id:'compliance',label:'NON-DOT Compliance',icon:'⚑',href:'/compliance.html'},
-{id:'documents',label:'Documents',icon:'▤',href:'/documents.html'},
-{id:'reports',label:'Reports',icon:'▥',href:'/reports.html'},
-{id:'notifications',label:'Notifications',icon:'◌',href:'/notifications.html'},
-{id:'employer-billing',label:'Employer Billing',icon:'$',href:'/employer-billing.html'},
-{id:'billing',label:'Account Billing',icon:'$',href:'/billing.html'},
-{id:'order-services',label:'Order Services',icon:'＋',href:'/order-services.html'},
-{id:'order-history',label:'Order History',icon:'≡',href:'/order-history.html'},
-{id:'subscription',label:'Subscription',icon:'◇',href:'/subscription.html'},
-{id:'users-roles',label:'Users & Roles',icon:'♟',href:'/users-roles.html'},
-{id:'locations',label:'Locations',icon:'⌖',href:'/locations.html'},
-{id:'branding',label:'Branding',icon:'✦',href:'/branding.html'},
-{id:'integrations',label:'Integrations',icon:'↔',href:'/integrations.html'},
-{id:'audit-history',label:'Audit History',icon:'≣',href:'/audit-history.html'},
-{id:'support',label:'Support',icon:'?',href:'/support.html'},
-{id:'status',label:'System Status',icon:'●',href:'/status.html'}
-];
-let NAV=[...FULL_NAV];
-const cfgPage=id=>NAV.find(x=>norm(x.id)===norm(id))||{id,label:pretty(id),icon:'•',href:`/${id}.html`};
+const sb=window.supabase.createClient(C.workforceUrl,C.workforceKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pretty=v=>String(v??'—').replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase());
+const fmt=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(d)};
+const money=(v,c='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency:String(c||'USD')}).format(Number(v||0));
+const badge=v=>`<span class="badge ${/active|complete|paid|eligible|final|negative|enabled|yes/i.test(String(v))?'good':/cancel|inactive|terminated|positive|failed|closed|archived|expired/i.test(String(v))?'bad':'warn'}">${esc(pretty(v))}</span>`;
+const page=()=>location.pathname.split('/').pop()?.replace('.html','')||'dashboard';
+const norm=v=>String(v||'').trim().toLowerCase().replaceAll('_','-');
+const storageKey=()=>`s4u_${C.portalCode}_membership`, subKey=()=>`s4u_${C.portalCode}_subscription`;
+const stored=()=>localStorage.getItem(storageKey())||'', storedSub=()=>localStorage.getItem(subKey())||'';
+const cfgPage=id=>C.pages.find(x=>norm(x.id)===norm(id))||{id,label:pretty(id),icon:'•'};
+const apiName=()=>C.kind==='ctpa'?'workforce-ctpa-actions':C.kind==='employer'?'workforce-employer-operations':'workforce-employer-employee-access';
+let ctx=null,data=null,NAV=[];
 
-async function getSession(){const {data:{session},error}=await sb.auth.getSession();if(error)throw error;return session}
-function ctpaPayload(body={}){const o={membership_id:stored(),subscription_id:storedSub(),...body};if(!o.membership_id)delete o.membership_id;if(!o.subscription_id)delete o.subscription_id;return o}
+async function session(){const {data:{session},error}=await sb.auth.getSession();if(error)throw error;return session}
 async function invoke(name,body={}){
-  const s=await getSession();if(!s)throw Object.assign(new Error('AUTH_REQUIRED'),{status:401});
-  const r=await fetch(`${C.workforceUrl}/functions/v1/${name}`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${s.access_token}`,'apikey':C.workforceKey},body:JSON.stringify(ctpaPayload(body))});
+  const s=await session();
+  if(!s)throw new Error('Your session has expired. Please sign in again.');
+  const payload={portal_code:C.portalCode,membership_id:stored()||undefined,subscription_id:storedSub()||undefined,...body};
+  const r=await fetch(`${C.workforceUrl}/functions/v1/${name}`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${s.access_token}`,'apikey':C.workforceKey},body:JSON.stringify(payload)});
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||d.error)throw Object.assign(new Error(d.error||`Request failed (${r.status}).`),{status:r.status,payload:d});
+  if(!r.ok||d.error)throw new Error(d.error||d.reason||`Request failed (${r.status}).`);
   return d;
 }
-async function access(){const b={action:'session_context',requested_portal_code:C.portalCode};if(stored())b.membership_id=stored();if(storedSub())b.subscription_id=storedSub();return invoke(C.api,b)}
+async function access(){return invoke('workforce-session-context',{requested_portal_code:C.portalCode,requested_page:page()})}
+async function invokeMain(body={}){
+  const s=await session();
+  if(!s)throw new Error('Your session has expired. Please sign in again.');
+  const r=await fetch(`${MAIN_URL}/functions/v1/workforce-portal-service-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${s.access_token}`,'apikey':MAIN_KEY},body:JSON.stringify({portal_code:C.portalCode,...body})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error)throw new Error(d.error||`Purchase request failed (${r.status}).`);
+  return d;
+}
+async function loadServices(){const [catalog,history]=await Promise.all([invoke('workforce-service-store',{action:'catalog'}),invokeMain({action:'history'})]);return{...catalog,...history}}
+let stripeJsPromise=null;
+function loadStripeJs(){if(window.Stripe)return Promise.resolve();if(stripeJsPromise)return stripeJsPromise;stripeJsPromise=new Promise((resolve,reject)=>{const el=document.createElement('script');el.src='https://js.stripe.com/v3/';el.async=true;el.onload=()=>window.Stripe?resolve():reject(new Error('Stripe.js failed to initialize.'));el.onerror=()=>reject(new Error('Unable to load secure payment fields.'));document.head.appendChild(el)});return stripeJsPromise}
+async function showMountedCheckout(d){
+  if(!d?.client_secret||!d?.stripe_publishable_key)throw new Error('Secure payment session is incomplete.');
+  await loadStripeJs();
+  const b=document.createElement('div');b.className='modal-backdrop';b.innerHTML=`<div class="modal modal-wide"><h2>Secure Payment</h2><p style="color:#52657a;line-height:1.55;margin:0 0 12px">Complete payment below. You will remain inside your screenings4u Workforce portal.</p><div class="notice" style="margin-bottom:14px"><strong>${esc(d.service?.name||'Workforce Service')}</strong><div style="margin-top:4px">${money(d.service?.amount,d.service?.currency||'USD')}</div></div><div id="stripe-payment-element" style="min-height:180px"></div><div id="stripe-payment-message" style="margin-top:12px"></div><div class="modal-actions"><button class="btn ghost" data-close type="button">Cancel</button><button class="btn primary" data-pay type="button">Pay Securely</button></div></div>`;document.body.appendChild(b);
+  const close=()=>b.remove();b.querySelector('[data-close]').onclick=close;const pay=b.querySelector('[data-pay]'),msg=b.querySelector('#stripe-payment-message');
+  const stripe=window.Stripe(d.stripe_publishable_key);
+  const checkout=stripe.initCheckoutElementsSdk({clientSecret:d.client_secret});
+  const pe=checkout.createPaymentElement();pe.mount('#stripe-payment-element');
+  pay.onclick=async()=>{pay.disabled=true;pay.textContent='Processing…';msg.innerHTML='';try{const loaded=await checkout.loadActions();if(loaded.type==='error')throw new Error(loaded.error?.message||'Unable to initialize payment.');const result=await loaded.actions.confirm();if(result?.type==='error'||result?.error)throw new Error(result.error?.message||'Payment could not be completed.');const st=await invokeMain({action:'status',session_id:d.checkout_session_id});if(String(st.payment_status)==='paid'||String(st.status)==='complete'){close();await brandedMessage('Payment received','Your service purchase was successful. screenings4u Testing Operations is creating the linked testing case.','success');await refresh()}else{msg.innerHTML='<div class="notice"><strong>Payment processing</strong><div style="margin-top:4px">Stripe is still confirming this payment. This page will update automatically.</div></div>';setTimeout(()=>location.reload(),1800)}}catch(err){msg.innerHTML=`<div class="notice"><strong>Payment issue</strong><div style="margin-top:4px">${esc(err.message||String(err))}</div></div>`;pay.disabled=false;pay.textContent='Pay Securely'}};
+}
+function brandedMessage(title,message,type='info'){return new Promise(resolve=>{const b=modalShell(title,`<div class="notice" style="border-left:4px solid ${type==='success'?'#17764a':type==='error'?'#b42318':'#ef6c00'}"><div>${esc(message)}</div></div>`,`<button class="btn primary" data-ok type="button">Continue</button>`);b.querySelector('[data-ok]').onclick=()=>{b.remove();resolve(true)}})}
 
-function shell(ctx){
-  const current=page();
-  NAV=[...FULL_NAV];
-  const planLabel=ctx?.subscription?.plan_name||C.label;
-  const links=NAV.map(x=>`<a href="${esc(x.href||('/'+x.id+'.html'))}" class="${current===norm(x.id)?'active':''}"><span class="ico">${esc(x.icon||'•')}</span><span>${esc(x.label||pretty(x.id))}</span></a>`).join('');
+
+async function load(){const p=page();if(p==='billing'&&C.kind!=='self')return invoke('workforce-invoice-portal',{action:'list'});if(p==='services'&&C.kind!=='self')return loadServices();return invoke(apiName(),{action:'workspace',page:p})}
+
+function displayName(c){
+  return String(c?.membership?.organization_name||c?.organization_name||c?.workspace?.organization_name||c?.subscription?.plan_name||C.label||'screenings4u Workforce');
+}
+function navRows(c){
+  const allowed=Array.isArray(c?.navigation)&&c.navigation.length?c.navigation:C.pages;
+  return allowed.map(n=>{const id=norm(n.id);const local=cfgPage(id);return {...n,id,label:local.label||n.label||pretty(id),icon:local.icon||n.icon||'•',href:n.href||`/${id}.html`}});
+}
+function shell(c){
+  const current=norm(page());
+  document.body.dataset.portalPage=current;
+  NAV=navRows(c);
+  const planLabel=displayName(c);
+  const links=NAV.map(x=>`<a href="${esc(x.href)}" class="${current===norm(x.id)?'active':''}"${current===norm(x.id)?' aria-current="page"':''}><span class="ico">${esc(x.icon||'•')}</span><span>${esc(x.label||pretty(x.id))}</span></a>`).join('');
   document.title=`${cfgPage(current).label} | ${planLabel}`;
-  if(current!=='support')supportCtxWrite({page_url:location.href,page_title:document.title,page_id:current,captured_at:new Date().toISOString()});
-  document.body.className='';
-  document.body.innerHTML=`<div class="app"><aside class="side" id="side"><div class="brand"><img src="/images/logo.png" alt="${esc(C.label)}"></div><nav class="nav"><div class="nav-title">${esc(planLabel)}</div>${links}</nav><div class="side-foot"><div style="font-size:9px;color:#9fb3c7">Portal</div><div style="font-size:11px;font-weight:800;color:#fff;margin-top:3px">${esc(C.domain)}</div></div></aside><main class="main"><header class="top"><div class="top-left"><button class="menu" id="menu" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobileNav"><span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span></button><span class="crumb">${esc(planLabel)} / ${esc(cfgPage(current).label)}</span></div><div class="top-right"><span class="pill">${esc(C.kind==='self'?'Self Service':'Management')}</span>${C.agency?`<span class="pill">${esc(C.agency)}</span>`:''}<button class="top-support${current==='support'?' active':''}" id="supportShortcut" type="button"${current==='support'?' aria-current="page"':''}>Support</button><button class="signout" id="logout">Sign out</button></div></header><section class="mobile-nav" id="mobileNav" aria-hidden="true" aria-label="Portal navigation"><div class="mobile-nav-inner"><div class="mobile-nav-head"><div><span>Portal navigation</span><strong>${esc(planLabel)}</strong></div><span class="mobile-nav-current">${esc(cfgPage(current).label)}</span></div><nav class="mobile-nav-links">${links}</nav><div class="mobile-nav-foot"><span>${esc(C.domain)}</span><small>Select a page to close this menu.</small></div></div></section><div class="content"><div id="error"></div><section class="hero"><span class="hero-kicker">${esc(planLabel)}</span><h1>${esc(cfgPage(current).label)}</h1><p id="subtitle">Loading portal workspace.</p><div class="hero-actions" id="actions"></div></section><section class="section" id="content"><div class="panel"><div class="loading-msg">Loading…</div></div></section></div></main></div>`;
+  document.body.className='loading';
+  document.body.innerHTML=`<div class="app">
+    <aside class="side" id="side">
+      <div class="brand"><img class="brand-logo brand-logo-ready" src="/assets/img/logo.png" alt="screenings4u"></div>
+      <nav class="nav"><div class="nav-title">${esc(planLabel)}</div>${links}</nav>
+      <div class="side-foot"><div style="font-size:9px;color:#9fb3c7">Portal</div><div style="font-size:11px;font-weight:800;color:#fff;margin-top:3px">${esc(C.domain)}</div></div>
+    </aside>
+    <main class="main">
+      <header class="top">
+        <div class="top-left"><button class="menu" id="menu" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobileNav"><span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span></button><span class="crumb">${esc(planLabel)} / ${esc(cfgPage(current).label)}</span></div>
+        <div class="top-right"><span class="pill">${esc(C.kind==='self'?'Self Service':'Management')}</span><span class="pill">NON-DOT</span><button class="signout" id="logout" type="button">Sign out</button></div>
+      </header>
+      <section class="mobile-nav" id="mobileNav" aria-hidden="true" aria-label="Portal navigation"><div class="mobile-nav-inner"><div class="mobile-nav-head"><div><span>Portal navigation</span><strong>${esc(planLabel)}</strong></div><span class="mobile-nav-current">${esc(cfgPage(current).label)}</span></div><nav class="mobile-nav-links">${links}</nav><div class="mobile-nav-foot"><span>${esc(C.domain)}</span><small>Select a page to close this menu.</small></div></div></section>
+      <div class="content"><div id="toast"></div><section class="hero"><span class="hero-kicker">${esc(planLabel)}</span><h1>${esc(cfgPage(current).label)}</h1><p id="subtitle">Loading NON-DOT Workforce workspace.</p><div class="hero-actions" id="actions"></div></section><section class="section" id="content"><div class="panel"><div class="loading-msg">Loading…</div></div></section></div>
+    </main>
+  </div>`;
   const menuBtn=$('#menu'),mobileNav=$('#mobileNav');
   const setMobileNav=open=>{
     const isMobile=window.matchMedia('(max-width: 820px)').matches;
@@ -95,360 +108,287 @@ function shell(ctx){
     window.addEventListener('resize',()=>{if(window.innerWidth>820)setMobileNav(false)},{passive:true});
     document.addEventListener('keydown',e=>{if(e.key==='Escape')setMobileNav(false)});
   }
-  const supportShortcut=$('#supportShortcut');
-  if(supportShortcut)supportShortcut.onclick=()=>{
-    if(current!=='support')supportCtxWrite({page_url:location.href,page_title:document.title,page_id:current,captured_at:new Date().toISOString(),opened_from:'top_support'});
-    if(current!=='support')location.href='/support.html';
-  };
-  $('#logout').onclick=async()=>{await sb.auth.signOut();location.replace('/login.html')};
+  $('#logout').onclick=async()=>{localStorage.removeItem(storageKey());localStorage.removeItem(subKey());await sb.auth.signOut();location.replace('/login.html')};
 }
-function metric(label,value,note=''){return `<div class="metric"><small>${esc(label)}</small><strong>${esc(value)}</strong><span>${esc(note)}</span></div>`}
-function read(o,keys){for(const k of keys){let v=o;for(const p of k.split('.'))v=v?.[p];if(v!==undefined&&v!==null&&v!=='')return v}return'—'}
-const dateCell=v=>fmt(v),moneyCell=v=>money(v),badgeCell=v=>badge(v);
-const COLS={
-  employers:[['Employer',['legal_name','workforce_display_name']],['Status',['status'],badgeCell],['Classification',['workforce_classification']],['Contact',['primary_contact_email']],['State',['state']]],
-  employees:[['Name',['display_name','first_name']],['Employee #',['employee_number']],['Position',['job_title']],['Worker Type',['workforce_worker_type']],['Status',['employment_status'],badgeCell]],
-  programs:[['Program',['name']],['Type',['program_type'],badgeCell],['Method',['testing_method']],['Category',['regulatory_category']],['Status',['status'],badgeCell]],
-  pools:[['Pool',['name']],['Type',['pool_type']],['Program',['program_id']],['Drug Rate',['drug_testing_rate']],['Status',['status'],badgeCell]],
-  selections:[['Date',['selection_date','selected_at'],dateCell],['Type',['selection_type']],['Population',['population_size']],['Drug',['drug_selection_count','drug_selected']],['Status',['status'],badgeCell]],
-  testing:[['Order',['order_number']],['Reason',['reason']],['Type',['test_type']],['Program',['programs.name','program_type']],['Status',['status'],badgeCell]],
-  results:[['Order',['testing_orders.order_number','order_number']],['Result',['final_status','verified_result'],badgeCell],['Date',['result_date','finalized_at'],dateCell],['MRO',['mro_status'],badgeCell],['Status',['notification_status'],badgeCell]],
-  compliance:[['Case',['case_number']],['Event',['event_type']],['Priority',['priority'],badgeCell],['Opened',['opened_at','created_at'],dateCell],['Status',['status'],badgeCell]],
-  documents:[['File',['file_name','title']],['Type',['document_type']],['Uploaded',['uploaded_at','created_at'],dateCell],['Expires',['expires_at'],dateCell],['Access',['access_level'],badgeCell]],
-  notifications:[['Subject',['subject','event_type']],['Channel',['channel']],['Status',['status'],badgeCell],['Queued',['queued_at'],dateCell]],
-  invoices:[['Invoice',['invoice_number']],['Status',['status'],badgeCell],['Total',['total'],moneyCell],['Paid',['amount_paid'],moneyCell],['Due',['amount_due'],moneyCell]],
-  credentials:[['Credential',['credential_type']],['Number',['credential_number']],['State',['issuing_state']],['Expires',['expires_at'],dateCell],['Status',['status'],badgeCell]],
-  training:[['Training',['training_title','title']],['Provider',['provider']],['Status',['status'],badgeCell],['Completed',['completed_at'],dateCell],['Expires',['expires_at'],dateCell]],
-  policies:[['Policy',['policy_name','ctpa_policy_documents.title']],['Status',['status'],badgeCell],['Distributed',['distributed_at'],dateCell],['Acknowledged',['acknowledged_at'],dateCell]],
-  accidents:[['Occurred',['occurred_at'],dateCell],['Type',['accident_type']],['Required',['testing_required'],v=>badge(v===true?'required':v===false?'not required':'pending')],['Drug',['drug_test_required'],v=>badge(v===true?'required':'—')],['Alcohol',['alcohol_test_required'],v=>badge(v===true?'required':'—')]],
-  members:[['User',['profiles.display_name','profiles.first_name','user_id']],['Role',['roles.name','roles.code']],['Status',['status'],badgeCell],['Primary',['is_primary'],v=>badge(v===true?'yes':'no')]]
-};
-function table(title,rows,cols){
-  const body=rows.length?rows.map(r=>`<tr>${cols.map(c=>`<td>${c[2]?c[2](read(r,c[1])):esc(read(r,c[1]))}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${cols.length}"><div class="empty">No records available.</div></td></tr>`;
-  return `<div class="panel"><div class="panel-head"><div><h2>${esc(title)}</h2></div><span class="badge">${rows.length} record${rows.length===1?'':'s'}</span></div><div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div></div>`;
+
+function notice(message,type='bad'){
+  const t=$('#toast');if(!t)return;
+  t.innerHTML=`<div class="notice" style="border-left:4px solid ${type==='good'?'#17764a':'#ef6c00'};margin-bottom:14px"><strong>${type==='good'?'Success':'Notice'}</strong><div style="margin-top:4px">${esc(message)}</div></div>`;
+  setTimeout(()=>{if(t)t.innerHTML=''},5500);
 }
-function modal(title,fields,onSave){
+function modalShell(title,body,buttons='',wide=false){const b=document.createElement('div');b.className='modal-backdrop';b.innerHTML=`<div class="modal${wide?' modal-wide':''}"><h2>${esc(title)}</h2>${body}<div class="modal-actions">${buttons}</div></div>`;document.body.appendChild(b);return b}
+function confirmBox(title,message){return new Promise(resolve=>{const b=modalShell(title,`<p style="line-height:1.6;color:#52657a">${esc(message)}</p>`,`<button class="btn ghost" data-no type="button">Cancel</button><button class="btn primary" data-yes type="button">Continue</button>`);b.querySelector('[data-no]').onclick=()=>{b.remove();resolve(false)};b.querySelector('[data-yes]').onclick=()=>{b.remove();resolve(true)}})}
+function fieldHtml(f,v={}){
+  const value=v[f.name]??f.value??'';
+  if(f.type==='select')return `<div class="field ${f.full?'full':''}"><label>${esc(f.label)}</label><select name="${esc(f.name)}" ${f.required?'required':''}>${(f.options||[]).map(o=>`<option value="${esc(o.value)}" ${String(o.value)===String(value)?'selected':''}>${esc(o.label)}</option>`).join('')}</select></div>`;
+  if(f.type==='textarea')return `<div class="field ${f.full?'full':''}"><label>${esc(f.label)}</label><textarea name="${esc(f.name)}" rows="4" ${f.required?'required':''}>${esc(value)}</textarea></div>`;
+  return `<div class="field ${f.full?'full':''}"><label>${esc(f.label)}</label><input type="${esc(f.type||'text')}" name="${esc(f.name)}" value="${esc(value)}" ${f.min!==undefined?`min="${esc(f.min)}"`:''} ${f.max!==undefined?`max="${esc(f.max)}"`:''} ${f.step!==undefined?`step="${esc(f.step)}"`:''} ${f.required?'required':''}></div>`;
+}
+function formModal(title,fields,initial,onSave){
   const b=document.createElement('div');b.className='modal-backdrop';
-  const fieldHtml=fields.map(f=>{const input=f.type==='select'?`<select name="${esc(f.name)}" ${f.required?'required':''}>${(f.options||[]).map(o=>`<option value="${esc(o.value)}" ${String(o.value)===String(f.value??'')?'selected':''}>${esc(o.label)}</option>`).join('')}</select>`:`<input type="${esc(f.type||'text')}" name="${esc(f.name)}" value="${esc(f.value||'')}" ${f.required?'required':''}>`;return `<div class="field ${f.full?'full':''}"><label>${esc(f.label)}</label>${input}</div>`}).join('');
-  b.innerHTML=`<form class="modal"><h2>${esc(title)}</h2><div class="modal-grid">${fieldHtml}</div><div class="modal-actions"><button type="button" class="btn ghost" data-cancel>Cancel</button><button type="submit" class="btn primary">Save</button></div></form>`;
+  b.innerHTML=`<form class="modal"><h2>${esc(title)}</h2><div class="modal-grid">${fields.map(f=>fieldHtml(f,initial||{})).join('')}</div><div class="modal-actions"><button type="button" class="btn ghost" data-cancel>Cancel</button><button type="submit" class="btn primary">Save</button></div></form>`;
   document.body.appendChild(b);b.querySelector('[data-cancel]').onclick=()=>b.remove();
-  b.querySelector('form').onsubmit=async e=>{e.preventDefault();try{const v=Object.fromEntries(new FormData(e.currentTarget).entries());await onSave(v);b.remove();await render(window.portalCtx)}catch(err){alert(err.message||String(err))}};
+  b.querySelector('form').onsubmit=async e=>{e.preventDefault();const vals=Object.fromEntries(new FormData(e.currentTarget).entries());try{await onSave(vals);b.remove();notice('Saved successfully.','good');await refresh()}catch(err){notice(err.message||String(err))}};
 }
-function setSubtitle(v){$('#subtitle').textContent=v}
-function addAction(label,fn,secondary=false){const b=document.createElement('button');b.className=`btn ${secondary?'secondary':'primary'}`;b.textContent=label;b.onclick=fn;$('#actions').appendChild(b)}
+function addAction(label,fn,kind='primary'){const b=document.createElement('button');b.className=`btn ${kind}`;b.type='button';b.textContent=label;b.onclick=fn;$('#actions')?.appendChild(b)}
+function read(o,keys){for(const k of keys){let v=o;for(const p of k.split('.'))v=v?.[p];if(v!==undefined&&v!==null&&v!=='')return v}return'—'}
+const personName=r=>[r?.first_name,r?.middle_name,r?.last_name].filter(Boolean).join(' ')||r?.display_name||'—';
+const percent=v=>v===null||v===undefined||v===''?'—':`${Number(v)}%`;
 
-function isUtilityPage(p){return ['integrations','audit-history','locations','users-roles'].includes(norm(p).replaceAll('_','-'))}
-async function utilityData(p){const x=norm(p).replaceAll('_','-');return invoke(C.api,{action:'workspace',page:x==='users-roles'?'team':x})}
-function utilityPersonName(m){const p=m?.profile||m?.profiles||m?.actor_profile||{};return p.full_name||p.display_name||[p.first_name,p.last_name].filter(Boolean).join(' ')||m?.user_id||m?.actor_user_id||'Portal user'}
-function utilityIntegrationsView(d){
-  if(d?.not_enabled)return `<div class="notice"><strong>Integrations</strong><br>${esc(d.message||'Integrations are not enabled for this account yet.')}</div>`;
-  const catalog=d.catalog||[],enable=d.enablements||[],legacy=d.integrations||[];
-  const em=new Map(enable.map(x=>[String(x.integration_catalog_id),x]));
-  const cards=catalog.map(x=>{const e=em.get(String(x.id)),on=e?.enabled===true||['active','enabled','connected'].includes(norm(e?.status));return `<article class="card utility-card"><div class="panel-head"><div><h3>${esc(x.name||x.code)}</h3><p>${esc(x.provider||x.category||'Integration')}</p></div>${badge(on?'enabled':(e?.status||'available'))}</div><p>${esc(x.description||'Connect this service to your NON-DOT Workforce workspace.')}</p><small>${esc(x.category||'Integration')}</small></article>`}).join('');
-  const rows=legacy.map(x=>`<tr><td><strong>${esc(x.name||x.provider||'Integration')}</strong><small>${esc(x.provider||x.integration_type||'')}</small></td><td>${badge(x.status||'unknown')}</td><td>${fmt(x.last_sync_at)}</td><td>${fmt(x.updated_at)}</td>${d.can_manage?`<td><button class="mini-btn" data-integration-id="${esc(x.id)}">Manage</button></td>`:''}</tr>`).join('');
-  return `${cards?`<div class="cards utility-grid">${cards}</div>`:'<div class="panel"><div class="empty">No integration catalog entries are available.</div></div>'}${legacy.length?`<div class="section panel"><div class="panel-head"><div><h2>Connected Integrations</h2><p>Current tenant-level integration connections.</p></div></div><div class="table-wrap"><table><thead><tr><th>Integration</th><th>Status</th><th>Last Sync</th><th>Updated</th>${d.can_manage?'<th></th>':''}</tr></thead><tbody>${rows}</tbody></table></div></div>`:''}`;
+const COLS={
+  employers:[['Employer',['legal_name','workforce_display_name']],['Status',['status'],v=>badge(v)],['Primary Contact',['primary_contact_email']],['State',['state']]],
+  employees:[['Name',['first_name'],(v,r)=>esc(personName(r))],['Employee #',['employee_number']],['Worker Type',['workforce_worker_type'],v=>badge(v==='driver'?'NON-DOT Driver':v)],['Job Title',['job_title']],['Safety Sensitive',['safety_sensitive'],v=>badge(v===true?'yes':v===false?'no':'—')],['Status',['employment_status'],v=>badge(v)]],
+  programs:[['Program',['name']],['Type',['program_type'],v=>badge(v||'NON_DOT')],['Category',['regulatory_category']],['Panel',['testing_panel']],['Method',['testing_method']],['Drug Rate',['drug_random_rate'],v=>percent(v)],['Alcohol Rate',['alcohol_random_rate'],v=>percent(v)],['Effective',['effective_date'],v=>fmt(v)],['Status',['status'],v=>badge(v)]],
+  pools:[['Pool',['name']],['Type',['pool_type']],['Program',['program_id']],['Schedule',['selection_schedule']],['Drug Rate',['drug_testing_rate'],v=>percent(v)],['Alcohol Rate',['alcohol_testing_rate'],v=>percent(v)],['Effective',['effective_date'],v=>fmt(v)],['Status',['status'],v=>badge(v)]],
+  selections:[['Date',['selection_date','selected_at'],v=>fmt(v)],['Type',['selection_type']],['Population',['population_size']],['Selected',['selected_count','drug_selection_count','drug_selected']],['Status',['status'],v=>badge(v)]],
+  testing:[['Order',['order_number']],['Reason',['reason']],['Test',['test_type']],['Program Type',['program_type'],v=>badge(v||'NON_DOT')],['Status',['status'],v=>badge(v)],['Created',['created_at'],v=>fmt(v)]],
+  results:[['Order',['testing_orders.order_number','order_number']],['Result',['final_status','verified_result','result'],v=>badge(v)],['Date',['result_date','finalized_at','created_at'],v=>fmt(v)],['Status',['notification_status','status'],v=>badge(v)]],
+  compliance:[['Case',['case_number','id']],['Event',['event_type','case_type']],['Priority',['priority'],v=>badge(v)],['Opened',['opened_at','created_at'],v=>fmt(v)],['Status',['status'],v=>badge(v)]],
+  documents:[['File',['file_name','title']],['Type',['document_type']],['Uploaded',['uploaded_at','created_at'],v=>fmt(v)],['Expires',['expires_at'],v=>fmt(v)],['Status',['status','access_level'],v=>badge(v)]],
+  notifications:[['Subject',['subject','event_type']],['Channel',['channel']],['Status',['status'],v=>badge(v)],['Queued',['queued_at','created_at'],v=>fmt(v)]],
+  invoices:[['Invoice',['invoice_number']],['Status',['status'],v=>badge(v)],['Total',['total'],v=>money(v)],['Paid',['amount_paid'],v=>money(v)],['Due',['amount_due'],v=>money(v)],['Issued',['issued_at','created_at'],v=>fmt(v)]],
+  members:[['User',['profiles.display_name','profiles.first_name','user_id']],['Role',['roles.name','roles.code','role_name']],['Status',['status'],v=>badge(v)],['Primary',['is_primary'],v=>badge(v===true?'yes':v===false?'no':'—')]],
+  locations:[['Location',['name']],['Type',['location_type']],['City',['city']],['State',['state']],['Primary',['is_primary'],v=>badge(v===true?'yes':v===false?'no':'—')],['Status',['status'],v=>badge(v)]],
+  integrations:[['Integration',['provider','name','integration_type']],['Status',['status'],v=>badge(v)],['Updated',['updated_at'],v=>fmt(v)]],
+  audit:[['Event',['event_type','action']],['Object',['object_type','entity_type']],['Actor',['actor_email','actor_user_id','user_id']],['Date',['event_at','created_at'],v=>fmt(v)]],
+  contacts:[['Contact',['full_name','first_name'],(v,r)=>esc(r?.full_name||[r?.first_name,r?.last_name].filter(Boolean).join(' ')||'—')],['Type',['contact_type']],['Title',['title']],['Email',['email']],['Phone',['phone']],['Status',['status'],v=>badge(v)]],
+  consents:[['Document',['title','form_snapshot.title','form_type']],['Type',['form_type']],['Status',['status'],v=>badge(v)],['Sent',['sent_at','created_at'],v=>fmt(v)],['Completed',['completed_at'],v=>fmt(v)]],
+  training:[['Training',['training_title','title']],['Provider',['provider']],['Status',['status'],v=>badge(v)],['Completed',['completed_at'],v=>fmt(v)],['Expires',['expires_at'],v=>fmt(v)]],
+  credentials:[['Credential',['credential_type']],['Number',['credential_number']],['State',['issuing_state']],['Expires',['expires_at'],v=>fmt(v)],['Status',['status'],v=>badge(v)]]
+};
+function table(title,rows,cols,actions){
+  rows=Array.isArray(rows)?rows:[];
+  const body=rows.length?rows.map(r=>`<tr>${cols.map(c=>{const v=read(r,c[1]);return `<td>${c[2]?c[2](v,r):esc(v)}</td>`}).join('')}${actions?`<td class="row-actions">${actions(r)}</td>`:''}</tr>`).join(''):`<tr><td colspan="${cols.length+(actions?1:0)}"><div class="empty">No records available.</div></td></tr>`;
+  return `<div class="panel"><div class="panel-head"><div><h2>${esc(title)}</h2></div><span class="badge">${rows.length} record${rows.length===1?'':'s'}</span></div><div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}${actions?'<th>Actions</th>':''}</tr></thead><tbody>${body}</tbody></table></div></div>`;
 }
-function utilityAuditView(d){
-  const rows=d.audit_events||d.events||[];
-  const body=rows.map(x=>`<tr><td>${fmt(x.event_at)}</td><td><strong>${esc(pretty(x.action||'activity'))}</strong></td><td>${esc(pretty(x.resource_type||'record'))}<small>${esc(x.resource_id||'')}</small></td><td>${esc(utilityPersonName(x))}</td></tr>`).join('');
-  return `<div class="panel"><div class="panel-head"><div><h2>Audit History</h2><p>Recorded portal activity for this workspace.</p></div><span class="badge">${rows.length} event${rows.length===1?'':'s'}</span></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Action</th><th>Resource</th><th>Actor</th></tr></thead><tbody>${body||'<tr><td colspan="4"><div class="empty">No audit events are available for this workspace.</div></td></tr>'}</tbody></table></div></div>`;
+function metrics(items){return `<div class="metrics">${items.map(([a,b,c])=>`<div class="metric"><small>${esc(a)}</small><strong>${esc(b)}</strong><span>${esc(c||'')}</span></div>`).join('')}</div>`}
+function quickCards(){
+  const rows=NAV.filter(x=>norm(x.id)!=='dashboard').slice(0,6);
+  if(!rows.length)return'';
+  return `<div class="panel" style="margin-top:14px"><div class="panel-head"><div><h2>Quick Actions</h2><p>Open another area of your NON-DOT Workforce portal.</p></div></div><div class="cards" style="padding:14px">${rows.map(x=>`<a class="card" href="${esc(x.href)}"><strong>${esc(x.label)}</strong><span>${esc(cardCopy(norm(x.id)))}</span></a>`).join('')}</div></div>`;
 }
-function utilityLocationsView(d){
-  const rows=d.locations||[];
-  const body=rows.map(x=>{const employer=x.employer?.legal_name||x.employer?.dba_name||'';const addr=[x.address_line1,x.address_line2,x.city,x.state,x.postal_code].filter(Boolean).join(', ');return `<tr><td><strong>${esc(x.name||'Location')}</strong><small>${esc(employer||pretty(x.location_type||'work site'))}</small></td><td>${esc(addr||'—')}</td><td>${esc(x.phone||'—')}</td><td>${badge(x.status||'active')}</td><td>${x.is_primary?'<span class="badge good">Primary</span>':'—'}</td>${d.access_mode==='manage'&&C.kind!=='ctpa'&&C.kind!=='self'?`<td><button class="mini-btn" data-location-id="${esc(x.id)}">Edit</button></td>`:''}</tr>`}).join('');
-  const note=d.assigned_only?'<div class="notice">This page shows the location currently assigned to your employee record.</div>':'';
-  return `${note}<div class="panel"><div class="panel-head"><div><h2>Locations</h2><p>${C.kind==='ctpa'?'Work sites for Employers managed by this C/TPA.':'Company work sites and operating locations.'}</p></div><span class="badge">${rows.length} location${rows.length===1?'':'s'}</span></div><div class="table-wrap"><table><thead><tr><th>Location</th><th>Address</th><th>Phone</th><th>Status</th><th>Primary</th>${d.access_mode==='manage'&&C.kind!=='ctpa'&&C.kind!=='self'?'<th></th>':''}</tr></thead><tbody>${body||'<tr><td colspan="6"><div class="empty">No locations are configured yet.</div></td></tr>'}</tbody></table></div></div>`;
+function cardCopy(id){const m={employers:'Manage customer Employer accounts.',company:'Review company and contact information.',people:'Manage Employees and NON-DOT Drivers.',programs:'Create and maintain NON-DOT testing programs.',pools:'Manage NON-DOT random testing pools.',selections:'Review NON-DOT random selection events.',testing:'Create and track NON-DOT testing orders.',results:'Review testing results available to this account.',compliance:'Track company-policy compliance cases and tasks.',documents:'Review Workforce program documents.',consents:'Manage consents and acknowledgments.',reports:'Review available Workforce reporting.',notifications:'Review portal notifications.',billing:'Review billing and invoices.',services:'Browse and purchase NON-DOT testing services for your workforce.',team:'Review users and roles.',locations:'Manage company locations.',branding:'Review portal branding.',integrations:'Review enabled integrations.','audit-history':'Review account activity history.',profile:'Review your Workforce profile.','my-testing':'Review testing assigned to you.','my-results':'Review results available to you.',training:'Review your training records.',credentials:'Review your credentials.'};return m[id]||'Open this portal area.'}
+function rowButtons(r,type){if(C.kind==='self')return'';return `<button class="btn ghost" style="padding:6px 9px" data-edit="${type}" data-id="${esc(r.id)}" type="button">Edit</button><button class="btn ghost" style="padding:6px 9px" data-delete="${type}" data-id="${esc(r.id)}" type="button">Delete</button>${type==='employee'&&C.kind==='employer'?`<button class="btn ghost" style="padding:6px 9px" data-invite="${esc(r.id)}" type="button">Invite</button>`:''}`}
+
+const employerFields=[
+  {name:'legal_name',label:'Legal company name',required:true},{name:'dba_name',label:'DBA name'},
+  {name:'primary_contact_email',label:'Primary contact email',type:'email'},{name:'phone',label:'Phone'},
+  {name:'state',label:'State'}
+];
+const employeeFields=(employers=[])=>[
+  ...(C.kind==='ctpa'?[{name:'employer_id',label:'Employer',type:'select',required:true,options:employers.map(x=>({value:x.id,label:x.legal_name||x.workforce_display_name||x.id}))}]:[]),
+  {name:'first_name',label:'First name',required:true},{name:'last_name',label:'Last name',required:true},
+  {name:'employee_number',label:'Employee number'},{name:'email',label:'Email',type:'email'},
+  {name:'mobile',label:'Mobile'},{name:'job_title',label:'Job title'},
+  {name:'workforce_worker_type',label:'Worker type',type:'select',required:true,options:[{value:'employee',label:'Employee'},{value:'driver',label:'NON-DOT Driver'}]},
+  {name:'safety_sensitive',label:'Safety-sensitive position',type:'select',options:[{value:'false',label:'No'},{value:'true',label:'Yes'}]},
+  {name:'employment_status',label:'Employment status',type:'select',options:[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'},{value:'terminated',label:'Terminated'}]}
+];
+const programFields=(employers=[])=>[
+  ...(C.kind==='ctpa'?[{name:'employer_id',label:'Employer',type:'select',required:true,options:employers.map(x=>({value:x.id,label:x.legal_name||x.id}))}]:[]),
+  {name:'name',label:'Program name',required:true},
+  {name:'regulatory_category',label:'Program category',type:'select',options:[{value:'workplace_testing',label:'Workplace Testing'},{value:'drug_free_workplace',label:'Drug-Free Workplace'},{value:'safety_program',label:'Safety Program'},{value:'company_policy',label:'Company Policy'}]},
+  {name:'testing_panel',label:'Testing panel'},
+  {name:'testing_method',label:'Testing method',type:'select',options:[{value:'urine',label:'Urine'},{value:'oral_fluid',label:'Oral Fluid'},{value:'hair',label:'Hair'},{value:'other',label:'Other'}]},
+  {name:'drug_random_rate',label:'Drug random rate (%)',type:'number',min:0,max:100,step:'0.01'},
+  {name:'alcohol_random_rate',label:'Alcohol random rate (%)',type:'number',min:0,max:100,step:'0.01'},
+  {name:'testing_frequency',label:'Testing frequency',type:'select',options:[{value:'monthly',label:'Monthly'},{value:'quarterly',label:'Quarterly'},{value:'semiannual',label:'Semiannual'},{value:'annual',label:'Annual'},{value:'as_needed',label:'As Needed'}]},
+  {name:'effective_date',label:'Effective date',type:'date'},
+  {name:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'}]}
+];
+const poolFields=(employers=[],programs=[])=>[
+  ...(C.kind==='ctpa'?[{name:'employer_id',label:'Client Employer (optional for consortium)',type:'select',options:[{value:'',label:'C/TPA Consortium Pool'},...employers.map(x=>({value:x.id,label:x.legal_name||x.id}))]}]:[]),
+  {name:'name',label:'Pool name',required:true},
+  ...(C.kind==='ctpa'?[{name:'pool_type',label:'Pool type',type:'select',options:[{value:'consortium',label:'C/TPA Consortium'},{value:'employer',label:'Employer Pool'}]}]:[]),
+  {name:'program_id',label:'NON-DOT program',type:'select',options:[{value:'',label:'No program selected'},...programs.map(x=>({value:x.id,label:x.name||x.id}))]},
+  {name:'drug_testing_rate',label:'Drug testing rate (%)',type:'number',min:0,max:100,step:'0.01'},
+  {name:'alcohol_testing_rate',label:'Alcohol testing rate (%)',type:'number',min:0,max:100,step:'0.01'},
+  {name:'selection_schedule',label:'Selection schedule',type:'select',options:[{value:'monthly',label:'Monthly'},{value:'quarterly',label:'Quarterly'},{value:'semiannual',label:'Semiannual'},{value:'annual',label:'Annual'}]},
+  {name:'effective_date',label:'Effective date',type:'date'},
+  {name:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'}]}
+];
+const locationFields=[{name:'name',label:'Location name',required:true},{name:'location_type',label:'Location type'},{name:'address_line1',label:'Address'},{name:'city',label:'City'},{name:'state',label:'State'},{name:'postal_code',label:'ZIP / Postal code'},{name:'phone',label:'Phone'},{name:'timezone',label:'Timezone'},{name:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'}]}];
+const contactFields=[{name:'contact_type',label:'Contact type',type:'select',options:[{value:'primary',label:'Primary'},{value:'hr',label:'HR'},{value:'safety',label:'Safety'},{value:'billing',label:'Billing'},{value:'other',label:'Other'}]},{name:'first_name',label:'First name'},{name:'last_name',label:'Last name'},{name:'title',label:'Title'},{name:'email',label:'Email',type:'email'},{name:'phone',label:'Phone'},{name:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'}]}];
+
+function findRow(type,id){const map={employer:data?.employers,employee:data?.employees,program:data?.programs,pool:data?.pools,location:data?.locations,contact:data?.contacts};return (map[type]||[]).find(x=>String(x.id)===String(id))||{}}
+function edit(type,id){
+  const row=findRow(type,id);
+  const action=`save_${type}`;
+  const fields=type==='employer'?employerFields:type==='employee'?employeeFields(data?.employers||[]):type==='program'?programFields(data?.employers||[]):type==='pool'?poolFields(data?.employers||[],data?.programs||[]):type==='location'?locationFields:contactFields;
+  const initial={...row,safety_sensitive:String(!!row.safety_sensitive)};
+  formModal(`Edit ${type==='employee'?'Employee / NON-DOT Driver':pretty(type)}`,fields,initial,async v=>invoke(apiName(),{action,[type]:{...row,...v,id:row.id,safety_sensitive:v.safety_sensitive==='true'}}));
 }
-function utilityUsersRolesView(d){
-  if(d?.not_enabled)return `<div class="notice"><strong>Users & Roles</strong><br>${esc(d.message||'User management is not enabled for this account yet.')}</div>`;
-  const rows=d.members||[],manage=d.access_mode==='manage'||d.can_manage===true;
-  const body=rows.map(m=>`<tr><td><strong>${esc(utilityPersonName(m))}</strong><small>${esc((m.profile||m.profiles||{}).email||'')}</small></td><td>${esc(m.roles?.name||pretty(m.roles?.code||'user'))}</td><td>${badge(m.status||'active')}</td><td>${m.is_primary?'<span class="badge good">Primary</span>':'—'}</td><td>${m.accepted_at?fmt(m.accepted_at):(m.invited_at?'Invite pending':'—')}</td>${manage&&String(m.user_id)!==String(d.current_user_id||'')?`<td><button class="mini-btn" data-user-role="${esc(m.id)}">Manage</button></td>`:(manage?'<td>—</td>':'')}</tr>`).join('');
-  return `<div class="panel"><div class="panel-head"><div><h2>Users & Roles</h2><p>Portal access, assigned roles, and membership status for this workspace.</p></div><span class="badge">${rows.length} user${rows.length===1?'':'s'}</span></div><div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Primary</th><th>Access</th>${manage?'<th></th>':''}</tr></thead><tbody>${body||'<tr><td colspan="6"><div class="empty">No portal users are available.</div></td></tr>'}</tbody></table></div></div>`;
+async function remove(type,id){
+  const ok=await confirmBox(`Delete ${pretty(type)}`,`Remove this ${type} from active NON-DOT Workforce records? Historical activity is retained where the system requires it.`);if(!ok)return;
+  try{await invoke(apiName(),{action:`delete_${type}`,id});notice('Record removed.','good');await refresh()}catch(err){notice(err.message||String(err))}
 }
-function renderUtilityPage(p,d){
-  p=norm(p).replaceAll('_','-');
-  if(p==='integrations')return utilityIntegrationsView(d);
-  if(p==='audit_history')return utilityAuditView(d);
-  if(p==='locations')return utilityLocationsView(d);
-  if(p==='users-roles')return utilityUsersRolesView(d);
-  return '<div class="panel"><div class="empty">No utility data available.</div></div>';
+
+function invoiceButtons(r){return `<button class="btn ghost" style="padding:6px 9px" data-invoice-view="${esc(r.id)}" type="button">View</button>${Number(r.amount_due||0)>0&&!['paid','void','refunded'].includes(String(r.status||'').toLowerCase())?`<button class="btn primary" style="padding:6px 9px" data-invoice-pay="${esc(r.id)}" type="button">Pay</button>`:''}`}
+async function viewInvoice(id){
+  try{
+    const d=await invoke('workforce-invoice-portal',{action:'detail',invoice_id:id});const i=d.invoice||{};const items=i.invoice_items||[];
+    const body=`${metrics([['Invoice',i.invoice_number||'—'],['Status',pretty(i.status||'—')],['Total',money(i.total||0,i.currency)],['Amount Due',money(i.amount_due||0,i.currency)]])}<div class="panel" style="margin-top:14px"><div class="panel-head"><h3>Invoice Items</h3></div><div class="table-wrap"><table><thead><tr><th>Description</th><th>Qty</th><th>Amount</th></tr></thead><tbody>${items.length?items.map(x=>`<tr><td>${esc(x.description||x.name||'Service')}</td><td>${esc(x.quantity??1)}</td><td>${esc(money(x.amount||x.total||0,i.currency))}</td></tr>`).join(''):'<tr><td colspan="3"><div class="empty">No item detail available.</div></td></tr>'}</tbody></table></div></div>`;
+    const b=modalShell(`Invoice ${i.invoice_number||''}`,body,'<button class="btn ghost" data-close type="button">Close</button>',true);b.querySelector('[data-close]').onclick=()=>b.remove();
+  }catch(err){notice(err.message||String(err))}
 }
-function bindUtilityPage(p,d,ctx){
-  p=norm(p).replaceAll('_','-');
-  if(p==='locations'&&d.access_mode==='manage'&&C.kind!=='ctpa'&&C.kind!=='self'){
-    const openLocation=(x={})=>modal(x.id?'Edit Location':'Add Location',[
-      {name:'name',label:'Location name',value:x.name||'',required:true},{name:'location_type',label:'Location type',value:x.location_type||'work_site'},
-      {name:'address_line1',label:'Address line 1',value:x.address_line1||'',full:true},{name:'address_line2',label:'Address line 2',value:x.address_line2||'',full:true},
-      {name:'city',label:'City',value:x.city||''},{name:'state',label:'State',value:x.state||''},{name:'postal_code',label:'ZIP / postal code',value:x.postal_code||''},
-      {name:'phone',label:'Phone',type:'tel',value:x.phone||''},{name:'timezone',label:'Timezone',value:x.timezone||''},
-      {name:'status',label:'Status',type:'select',value:x.status||'active',options:[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'}]},
-      {name:'is_primary',label:'Primary location',type:'select',value:x.is_primary?'true':'false',options:[{value:'false',label:'No'},{value:'true',label:'Yes'}]}
-    ],async v=>invoke(C.api,{action:'save_location',location:{...v,id:x.id||undefined,is_primary:String(v.is_primary)==='true'}}));
-    addAction('Add Location',()=>openLocation({}));
-    document.querySelectorAll('[data-location-id]').forEach(b=>b.onclick=()=>{const x=(d.locations||[]).find(y=>String(y.id)===String(b.dataset.locationId));if(x)openLocation(x)});
+async function payInvoice(id){
+  try{
+    const d=await invoke('workforce-invoice-portal',{action:'payment_intent',invoice_id:id});
+    if(!d?.client_secret||!d?.publishable_key)throw new Error('Secure invoice payment is not ready.');
+    await loadStripeJs();
+    const i=d.invoice||{};
+    const b=document.createElement('div');b.className='modal-backdrop';b.innerHTML=`<div class="modal modal-wide"><h2>Pay Invoice ${esc(i.invoice_number||'')}</h2><p style="color:#52657a;line-height:1.55;margin:0 0 12px">Complete payment below. You will remain inside your screenings4u Workforce portal.</p><div class="notice" style="margin-bottom:14px"><strong>Amount Due</strong><div style="margin-top:4px">${money(i.amount_due||0,i.currency||'USD')}</div></div><div id="stripe-invoice-payment-element" style="min-height:180px"></div><div id="stripe-invoice-message" style="margin-top:12px"></div><div class="modal-actions"><button class="btn ghost" data-close type="button">Cancel</button><button class="btn primary" data-pay type="button">Pay Invoice</button></div></div>`;document.body.appendChild(b);
+    const close=()=>b.remove();b.querySelector('[data-close]').onclick=close;const pay=b.querySelector('[data-pay]'),msg=b.querySelector('#stripe-invoice-message');
+    const stripe=window.Stripe(d.publishable_key),elements=stripe.elements({clientSecret:d.client_secret,appearance:{theme:'stripe',variables:{colorPrimary:'#ff6b00',colorText:'#1d2d45',borderRadius:'10px'}}}),pe=elements.create('payment');pe.mount('#stripe-invoice-payment-element');
+    pay.onclick=async()=>{pay.disabled=true;pay.textContent='Processing…';try{const out=await stripe.confirmPayment({elements,confirmParams:{return_url:location.href},redirect:'if_required'});if(out.error)throw out.error;msg.innerHTML='<div class="notice"><strong>Payment submitted</strong><div style="margin-top:4px">Confirming your invoice payment…</div></div>';for(let n=0;n<10;n++){await new Promise(r=>setTimeout(r,1200));const x=await invoke('workforce-invoice-portal',{action:'detail',invoice_id:id}),inv=x.invoice||{};if(String(inv.status)==='paid'||Number(inv.amount_due||0)<=0){close();await brandedMessage('Invoice paid','Your invoice payment was received successfully.','success');await refresh();return}}close();await brandedMessage('Payment processing','Stripe accepted the payment. The invoice will update as confirmation completes.','info');await refresh()}catch(err){await brandedMessage('Invoice payment needs attention',err.message||String(err),'error');pay.disabled=false;pay.textContent='Pay Invoice'}};
+  }catch(err){await brandedMessage('Unable to open invoice payment',err.message||String(err),'error')}
+}
+
+function bindRows(){
+  $$('[data-buy-service]').forEach(b=>b.onclick=()=>buyService(b.dataset.buyService));
+  $$('[data-edit]').forEach(b=>b.onclick=()=>edit(b.dataset.edit,b.dataset.id));
+  $$('[data-delete]').forEach(b=>b.onclick=()=>remove(b.dataset.delete,b.dataset.id));
+  $$('[data-invite]').forEach(b=>b.onclick=async()=>{try{const d=await invoke(apiName(),{action:'invite_employee',employee_id:b.dataset.invite});notice(`Self-service invitation sent${d.portal_code?` to ${pretty(d.portal_code)}`:''}.`,'good')}catch(err){notice(err.message||String(err))}});
+  $$('[data-invoice-view]').forEach(b=>b.onclick=()=>viewInvoice(b.dataset.invoiceView));
+  $$('[data-invoice-pay]').forEach(b=>b.onclick=()=>payInvoice(b.dataset.invoicePay));
+}
+
+function selfNotice(){return `<div class="notice" style="margin-top:14px"><strong>NON-DOT Workforce self-service</strong><div style="margin-top:4px">Your Employer manages these records. You can review your information and complete assigned Consents & Acknowledgments from this portal.</div></div>`}
+function renderSelf(p){
+  const employee=data?.employee||{};
+  if(p==='dashboard')return `${metrics([['Name',personName(employee),'Workforce profile'],['Worker Type',employee.workforce_worker_type==='driver'?'NON-DOT Driver':'Employee','NON-DOT Workforce'],['Employee #',employee.employee_number||'—','Employer-assigned identifier'],['Status',pretty(employee.employment_status||'—'),'Employment status']])}${quickCards()}${selfNotice()}`;
+  if(p==='profile')return `<div class="panel"><div class="panel-head"><div><h2>My Profile</h2><p>NON-DOT Workforce employment information.</p></div></div><div style="padding:16px">${metrics([['Name',personName(employee)],['Employee #',employee.employee_number||'—'],['Worker Type',employee.workforce_worker_type==='driver'?'NON-DOT Driver':'Employee'],['Status',pretty(employee.employment_status||'—')]])}${selfNotice()}</div></div>`;
+  if(p==='my-testing')return table('My NON-DOT Testing',data.testing_orders||[],COLS.testing);
+  if(p==='my-results')return table('My NON-DOT Results',data.results||[],COLS.results);
+  if(p==='documents')return table('My Documents',data.documents||[],COLS.documents);
+  if(p==='training')return table('Training Records',data.training||[],COLS.training);
+  if(p==='credentials')return table('My Credentials',data.credentials||[],COLS.credentials);
+  if(p==='consents')return table('Consents & Acknowledgments',data.consent_assignments||[],COLS.consents,r=>['pending','viewed'].includes(String(r.status))?`<button class="btn primary" style="padding:6px 9px" data-consent="${esc(r.id)}" type="button">Complete</button>`:'');
+  return '<div class="panel"><div class="empty">No records available.</div></div>';
+}
+function serviceCard(x){return `<article class="panel" style="padding:18px;display:flex;flex-direction:column;gap:10px"><div><span class="badge">${esc(x.category||'Service')}</span></div><h3 style="margin:0;color:#173d78">${esc(x.name)}</h3><p style="margin:0;color:#63758a;line-height:1.55;min-height:48px">${esc(x.description||'screenings4u Workforce service')}</p><div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:#52657a">${x.specimen?`<span><strong>Specimen:</strong> ${esc(x.specimen)}</span>`:''}${x.results?`<span><strong>Results:</strong> ${esc(x.results)}</span>`:''}</div><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto;padding-top:8px"><strong style="font-size:20px;color:#173d78">${money(x.unit_price,x.currency)}</strong><button class="btn primary" data-buy-service="${esc(x.id)}" type="button">Purchase</button></div></article>`}
+function renderServicesPage(){
+  const services=data.services||[],groups=[...new Set(services.map(x=>x.category||'Services'))];
+  const orders=data.orders||[],cases=data.testing_cases||[];
+  const recent=orders.map(o=>{const c=cases.find(x=>x.order_id===o.id),item=(o.order_items||[])[0];return{...o,service_name:item?.services?.name||item?.metadata?.service_name||'Workforce Service',testing_status:c?.status||null,donor_name:c?.donor_name||o.metadata?.donor_name||null}});
+  return `${metrics([['Available Services',services.length,'Priced NON-DOT services'],['Recent Purchases',orders.length,'Workforce portal orders'],['Testing Cases',cases.length,'Linked screenings4u cases'],['Commerce','screenings4u','Secure Stripe checkout']])}<div style="height:16px"></div><div class="notice" style="margin-bottom:16px"><strong>Workforce Services</strong><div style="margin-top:4px">Choose a service, Employer (C/TPA accounts), Employee / NON-DOT Driver, and testing reason. Payment is processed securely by screenings4u and the paid order is linked directly to Testing Operations.</div></div>${groups.map(g=>`<div class="panel" style="margin-bottom:16px"><div class="panel-head"><div><h2>${esc(g)}</h2><p>Available for your NON-DOT Workforce account.</p></div></div><div style="padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">${services.filter(x=>(x.category||'Services')===g).map(serviceCard).join('')}</div></div>`).join('')}<div style="height:4px"></div>${table('Recent Service Purchases',recent,[['Order',['order_number']],['Service',['service_name']],['Donor',['donor_name']],['Payment',['payment_status'],v=>badge(v)],['Testing',['testing_status'],v=>v?badge(v):'—'],['Total',['total'],(v,r)=>money(v,r.currency)],['Created',['created_at'],v=>fmt(v)]])}`;
+}
+function buyService(id){
+ const svc=(data.services||[]).find(x=>String(x.id)===String(id));if(!svc)return notice('Service is no longer available.');
+ const employers=data.employers||[],employees=data.employees||[];
+ const employerOptions=C.kind==='ctpa'?`<div class="field full"><label>Employer</label><select name="employer_id" required><option value="">Choose Employer</option>${employers.map(e=>`<option value="${esc(e.id)}">${esc(e.legal_name||e.workforce_display_name||'Employer')}</option>`).join('')}</select></div>`:'';
+ const employeeOptions=employees.map(e=>{const emp=employers.find(x=>String(x.id)===String(e.employer_id));return `<option value="${esc(e.id)}" data-employer="${esc(e.employer_id)}">${esc([e.first_name,e.last_name].filter(Boolean).join(' '))}${emp&&C.kind==='ctpa'?` — ${esc(emp.legal_name)}`:''}${e.workforce_worker_type==='driver'?' (NON-DOT Driver)':''}</option>`}).join('');
+ const b=document.createElement('div');b.className='modal-backdrop';b.innerHTML=`<form class="modal"><h2>${esc(svc.name)}</h2><p style="color:#52657a;line-height:1.6">${esc(svc.description||'Select the worker who will receive this service.')}</p><div class="modal-grid">${employerOptions}<div class="field full"><label>Employee / NON-DOT Driver</label><select name="employee_id" required><option value="">Choose Worker</option>${employeeOptions}</select></div><div class="field full"><label>Testing reason</label><select name="reason" required><option value="pre_employment">Pre-employment</option><option value="random">Random</option><option value="reasonable_suspicion">Reasonable suspicion</option><option value="post_accident">Post-accident</option><option value="return_to_work">Return to work</option><option value="follow_up">Follow-up</option><option value="other">Other</option></select></div></div><div class="notice" style="margin-top:14px"><strong>${money(svc.unit_price,svc.currency)}</strong><div style="margin-top:4px">Secure Stripe payment will open here inside your Workforce portal. Your Workforce account is already linked; no second screenings4u account is required.</div></div><div class="modal-actions"><button class="btn ghost" data-cancel type="button">Cancel</button><button class="btn primary" type="submit">Continue to Secure Payment</button></div></form>`;document.body.appendChild(b);b.querySelector('[data-cancel]').onclick=()=>b.remove();
+ const empSel=b.querySelector('[name="employer_id"]'),workerSel=b.querySelector('[name="employee_id"]');if(empSel)empSel.onchange=()=>{const eid=empSel.value;[...workerSel.options].forEach((o,i)=>{if(i===0)return;o.hidden=!!eid&&o.dataset.employer!==eid});workerSel.value=''};
+ b.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.currentTarget.querySelector('[type="submit"]');btn.disabled=true;btn.textContent='Loading Secure Payment…';try{const v=Object.fromEntries(new FormData(e.currentTarget).entries()),d=await invokeMain({action:'checkout',offering_id:svc.id,employer_id:v.employer_id||undefined,employee_id:v.employee_id,reason:v.reason});b.remove();await showMountedCheckout(d)}catch(err){await brandedMessage('Unable to start payment',err.message||String(err));btn.disabled=false;btn.textContent='Continue to Secure Payment'}};
+}
+
+function renderMgmt(p){
+  if(p==='services')return renderServicesPage();
+  if(p==='dashboard'){
+    const top=C.kind==='ctpa'?
+      [['Client Employers',(data.employers||[]).length,'Managed Employer accounts'],['Workers',(data.employees||[]).length,'Employees / NON-DOT Drivers'],['NON-DOT Programs',(data.programs||[]).length,'Company-policy programs'],['Testing Orders',(data.testing_orders||[]).length,'NON-DOT testing activity']]:
+      [['Workers',(data.employees||[]).length,'Employees / NON-DOT Drivers'],['NON-DOT Programs',(data.programs||[]).length,'Company-policy programs'],['Testing Orders',(data.testing_orders||[]).length,'NON-DOT testing activity'],['Plan',ctx?.subscription?.plan_name||data?.subscription?.workforce_plans?.name||data?.subscription?.plan_name||'—','Workforce subscription']];
+    return `${metrics(top)}${quickCards()}`;
   }
-  if(p==='users-roles'){
-    const manage=d.access_mode==='manage'||d.can_manage===true;
-    if(manage&&C.kind==='ctpa')addAction('Invite User',()=>modal('Invite C/TPA User',[{name:'first_name',label:'First name',required:true},{name:'last_name',label:'Last name',required:true},{name:'email',label:'Email',type:'email',required:true},{name:'role_code',label:'Role',type:'select',value:'ctpa_staff',options:[{value:'ctpa_staff',label:'C/TPA Staff'},{value:'ctpa_admin',label:'C/TPA Administrator'}]}],async v=>invoke(C.api,{action:'invite_staff',member:v})));
-    document.querySelectorAll('[data-user-role]').forEach(b=>b.onclick=()=>{const m=(d.members||[]).find(x=>String(x.id)===String(b.dataset.userRole));if(!m)return;const opts=(d.roles||[]).map(r=>({value:r.id,label:r.name||pretty(r.code)}));modal('Manage User Role',[{name:'role_id',label:'Role',type:'select',value:m.role_id,options:opts},{name:'status',label:'Status',type:'select',value:m.status||'active',options:[{value:'active',label:'Active'},{value:'suspended',label:'Suspended'},{value:'revoked',label:'Revoked'}]}],async v=>{if(C.kind==='ctpa')return invoke(C.api,{action:'save_staff',member:{id:m.id,...v}});return invoke(C.api,{action:'save_member_role',member:{id:m.id,...v}})})});
-  }
-  if(p==='integrations'&&d.can_manage&&C.kind==='ctpa'){
-    document.querySelectorAll('[data-integration-id]').forEach(b=>b.onclick=()=>{const x=(d.integrations||[]).find(y=>String(y.id)===String(b.dataset.integrationId));if(!x)return;modal('Manage Integration',[{name:'status',label:'Status',type:'select',value:x.status||'inactive',options:[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'},{value:'disabled',label:'Disabled'}]}],async v=>invoke(C.api,{action:'save_integration_status',integration:{id:x.id,status:v.status}}))});
-  }
-}
-
-async function ctpaData(p){const map={owner_operators:'people',users_roles:'team'};return invoke(C.api,{action:'workspace',page:(map[p]||p).replaceAll('_','-')})}
-async function employerData(p){
-  if(C.kind==='agency')return invoke(C.api,{action:'agency_workspace',agency_code:C.agency});
-  if(p==='testing')return invoke(C.api,{action:'list'}).catch(()=>invoke(C.api,{action:'overview'}));
-  if(p==='pools')return invoke(C.api,{action:'workspace'});
-  if(p==='selections')return invoke(C.api,{action:'selection_history'}).catch(()=>invoke(C.api,{action:'selection_history'}));
-  if(p==='documents')return invoke(C.api,{action:'workspace'});
-  if(p==='results')return invoke(C.api,{action:'workspace'}).catch(()=>invoke(C.api,{action:'results'}));
-  if(p==='notifications')return invoke(C.api,{action:'workspace'}).catch(()=>invoke(C.api,{action:'notifications'}));
-  const map={dashboard:'overview',company:'settings',people:'overview',programs:'overview',pools:'overview',selections:'selection_history',compliance:'compliance_detail',reports:'reports',billing:'subscription',team:'members','post-accident':'overview'};
-  return invoke(C.api,{action:map[p]||'overview'});
-}
-async function selfData(){return invoke(C.api,{action:'workspace',membership_id:stored()})}
-async function serviceCatalog(){return {seller:{checkout_base:'https://workforce.screenings4u.com/'},services:[{name:'NON-DOT Drug Testing',description:'Workplace drug-testing services for non-regulated programs.',category:'NON-DOT Testing',amount:null,order_url:''},{name:'NON-DOT Alcohol Testing',description:'Workplace alcohol-testing services for company-policy programs.',category:'NON-DOT Testing',amount:null,order_url:''},{name:'Background Screening',description:'Employment screening services available to Workforce customers.',category:'Workforce Screening',amount:null,order_url:''}]}}
-
-function dashboard(ctx,d){
-  if(C.kind==='self'){
-    const m=[['Testing',(d.testing_orders||[]).length,'My testing orders'],['Results',(d.results||d.result_reports||[]).length,'My available results'],['Documents',(d.documents||[]).length,'My documents'],['Training',(d.training||[]).length,'My training records']];
-    return `<div class="metrics">${m.map(x=>metric(...x)).join('')}</div>`;
-  }
-  if(C.kind!=='ctpa'){
-    const m=[['People',(d.employees||[]).length,'Company roster'],['Programs',(d.programs||[]).length,'Programs'],['Testing',(d.testing_orders||d.orders||[]).length,'Orders'],['Compliance',(d.compliance_cases||d.cases||[]).filter(x=>!['closed','resolved'].includes(norm(x.status))).length,'Open cases']];
-    return `<div class="metrics">${m.map(x=>metric(...x)).join('')}</div>`;
-  }
-
-  const employers=d.employers||[],employees=d.employees||[],programs=d.programs||[],pools=d.pools||[],selections=d.selection_events||[],tests=d.testing_orders||[],results=d.results||[],cases=d.compliance_cases||[],notes=d.notifications||[],invoices=d.client_invoices||[];
-  const activePrograms=programs.filter(x=>['active','enabled'].includes(norm(x.status))).length;
-  const activePools=pools.filter(x=>!['inactive','archived','closed'].includes(norm(x.status))).length;
-  const openTests=tests.filter(x=>!['complete','completed','cancelled','canceled','final','closed'].includes(norm(x.status))).length;
-  const pendingSelections=selections.filter(x=>!['complete','completed','closed','cancelled','canceled'].includes(norm(x.status))).length;
-  const openCases=cases.filter(x=>!['closed','resolved','complete','completed'].includes(norm(x.status))).length;
-  const criticalCases=cases.filter(x=>!['closed','resolved','complete','completed'].includes(norm(x.status))&&['critical','high','urgent'].includes(norm(x.priority))).length;
-  const unreadNotes=notes.filter(x=>!['read','acknowledged','completed','sent'].includes(norm(x.status))).length;
-  const outstanding=invoices.reduce((n,x)=>n+Number(x.amount_due||0),0);
-  const overdueInvoices=invoices.filter(x=>Number(x.amount_due||0)>0&&x.due_at&&new Date(x.due_at)<new Date()).length;
-  const entitlement=d.entitlements||{};
-
-  const metrics=[
-    ['Employers',employers.length,'Managed client companies'],
-    ['Covered People',employees.length,'Employees and NON-DOT drivers'],
-    ['Active Programs',activePrograms,'NON-DOT programs'],
-    ['Active Pools',activePools,'Random pools'],
-    ['Open Testing',openTests,'Orders still in progress'],
-    ['Pending Randoms',pendingSelections,'Selection events requiring action'],
-    ['Open Compliance',openCases,criticalCases?`${criticalCases} high priority`:'No high-priority cases'],
-    ['Outstanding Invoices',money(outstanding),overdueInvoices?`${overdueInvoices} overdue`:'No overdue invoices']
-  ];
-
-  const byEmployer=employers.map(e=>{
-    const eid=e.id,workerCount=employees.filter(x=>x.employer_id===eid).length,programCount=programs.filter(x=>x.employer_id===eid).length,testOpen=tests.filter(x=>x.employer_id===eid&&!['complete','completed','cancelled','canceled','final','closed'].includes(norm(x.status))).length,caseOpen=cases.filter(x=>x.employer_id===eid&&!['closed','resolved','complete','completed'].includes(norm(x.status))).length;
-    const health=caseOpen?`${caseOpen} open compliance`:(testOpen?`${testOpen} tests in progress`:'Good standing');
-    const healthClass=caseOpen?'bad':testOpen?'warn':'good';
-    return `<tr><td><strong>${esc(e.legal_name||e.dba_name||'Employer')}</strong><small>${esc(e.state?`State ${e.state}`:'NON-DOT Workforce')}</small></td><td>${workerCount}</td><td>${programCount}</td><td>${testOpen}</td><td><span class="badge ${healthClass}">${esc(health)}</span></td><td><a class="snapshot-link" href="/employers.html">Open</a></td></tr>`;
-  }).join('')||`<tr><td colspan="6"><div class="empty">No employers have been added yet.</div></td></tr>`;
-
-  const attention=[];
-  if(criticalCases)attention.push([`${criticalCases} high-priority compliance case${criticalCases===1?'':'s'}`,'/compliance.html','Review compliance']);
-  if(openTests)attention.push([`${openTests} testing order${openTests===1?'':'s'} still in progress`,'/testing.html','Review testing']);
-  if(pendingSelections)attention.push([`${pendingSelections} random selection event${pendingSelections===1?'':'s'} requiring action`,'/selections.html','Review selections']);
-  if(overdueInvoices)attention.push([`${overdueInvoices} overdue client invoice${overdueInvoices===1?'':'s'}`,'/employer-billing.html','Review Employer billing']);
-  if(entitlement.notifications&&unreadNotes)attention.push([`${unreadNotes} notification${unreadNotes===1?'':'s'} requiring attention`,'/notifications.html','Open notifications']);
-  if(!attention.length)attention.push(['No urgent items need attention right now.','#','Company is current']);
-
-  const recentTests=tests.slice(0,6).map(x=>`<tr><td>${esc(x.order_number||'—')}</td><td>${esc((employers.find(e=>e.id===x.employer_id)||{}).legal_name||'—')}</td><td>${esc(pretty(x.reason||'—'))}</td><td>${badge(x.status)}</td></tr>`).join('')||`<tr><td colspan="4"><div class="empty">No recent testing activity.</div></td></tr>`;
-  const recentResults=results.slice(0,6).map(x=>`<tr><td>${esc(x.testing_order_id||x.id||'—')}</td><td>${badge(x.final_status||x.verified_result||x.status||'available')}</td><td>${fmt(x.result_date||x.finalized_at||x.created_at)}</td></tr>`).join('')||`<tr><td colspan="3"><div class="empty">No recent results.</div></td></tr>`;
-  const recentActivity=[...tests.map(x=>({type:'Testing',label:x.order_number||pretty(x.reason),date:x.updated_at||x.created_at,status:x.status})),...cases.map(x=>({type:'Compliance',label:x.case_number||pretty(x.event_type),date:x.updated_at||x.created_at,status:x.status})),...selections.map(x=>({type:'Random',label:pretty(x.selection_type||'Selection event'),date:x.updated_at||x.selection_date||x.created_at,status:x.status}))].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,8);
-
-  return `<div class="metrics snapshot-metrics">${metrics.map(x=>metric(...x)).join('')}</div>
-  <div class="section snapshot-grid">
-    <div class="panel"><div class="panel-head"><div><h2>Attention Required</h2><p>Items that may need action today.</p></div></div><div class="snapshot-attention">${attention.map(([label,href,action])=>href==='#'?`<div class="attention-row good"><div><strong>${esc(label)}</strong><span>${esc(action)}</span></div></div>`:`<a class="attention-row" href="${href}"><div><strong>${esc(label)}</strong><span>${esc(action)}</span></div><span>→</span></a>`).join('')}</div></div>
-    <div class="panel"><div class="panel-head"><div><h2>Plan Snapshot</h2><p>Current subscription and enabled premium services.</p></div></div><div class="snapshot-plan"><strong>${esc(d.subscription?.plans?.name||'NON-DOT Workforce C/TPA Plan')}</strong><span>${esc(d.subscription?.status?pretty(d.subscription.status):'Active')}</span><div class="plan-chips">${[['Advanced Reports','advanced_reports'],['Employer Portal Delivery','customer_portal_delivery'],['White Label','white_label'],['Branded Email','branded_email'],['Payment Processing','client_payments']].filter(([,k])=>entitlement[k]).map(([l])=>`<span>${esc(l)}</span>`).join('')||'<span>Core C/TPA Management</span>'}</div></div></div>
-  </div>
-  <div class="section"><div class="panel"><div class="panel-head"><div><h2>Employer Health</h2><p>Operational snapshot across every managed client.</p></div><a class="snapshot-link" href="/employers.html">Manage Employers</a></div><div class="table-wrap"><table><thead><tr><th>Employer</th><th>People</th><th>Programs</th><th>Open Tests</th><th>Health</th><th></th></tr></thead><tbody>${byEmployer}</tbody></table></div></div></div>
-  <div class="section snapshot-grid">
-    <div class="panel"><div class="panel-head"><div><h2>Recent Testing</h2><p>Latest testing activity across client employers.</p></div><a class="snapshot-link" href="/testing.html">View Testing</a></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Employer</th><th>Reason</th><th>Status</th></tr></thead><tbody>${recentTests}</tbody></table></div></div>
-    ${entitlement.results_summary?`<div class="panel"><div class="panel-head"><div><h2>Recent Results</h2><p>Most recently posted result records.</p></div><a class="snapshot-link" href="/results.html">View Results</a></div><div class="table-wrap"><table><thead><tr><th>Order / Result</th><th>Result</th><th>Date</th></tr></thead><tbody>${recentResults}</tbody></table></div></div>`:''}
-  </div>
-  <div class="section"><div class="panel"><div class="panel-head"><div><h2>Recent Activity</h2><p>Latest testing, compliance, and random-selection changes.</p></div></div><div class="activity-list">${recentActivity.length?recentActivity.map(x=>`<div class="activity-row"><span class="activity-type">${esc(x.type)}</span><div><strong>${esc(x.label||'Activity')}</strong><small>${fmt(x.date)}</small></div>${badge(x.status||'updated')}</div>`).join(''):'<div class="empty">No recent activity yet.</div>'}</div></div></div>`;
-}
-function profileView(d){const x=d.employee||d.employer||{};return `<div class="metrics">${metric('Name',x.legal_name||[x.first_name,x.last_name].filter(Boolean).join(' ')||'—')}${metric('Email',x.email||x.primary_contact_email||'—')}${metric('Phone',x.mobile||x.phone||'—')}${metric('Status',pretty(x.employment_status||x.status||'—'))}</div>`}
-function pickManagementRows(p,d){
-  if(C.kind==='ctpa'){
-    if(p==='employers')return[d.employers||[],'employers'];
-    if(p==='people')return[d.employees||[],'employees'];
-    if(p==='programs')return[d.programs||[],'programs'];
-    if(p==='pools')return[d.pools||[],'pools'];
-    if(p==='selections')return[d.selection_members||d.selection_events||[],'selections'];
-    if(p==='testing')return[d.orders||d.testing_orders||[],'testing'];
-    if(p==='results')return[d.results||[],'results'];
-    if(p==='compliance')return[d.compliance_cases||d.cases||[],'compliance'];
-    if(p==='documents')return[d.documents||[],'documents'];
-    if(p==='notifications')return[d.notifications||[],'notifications'];
-    if(p==='billing')return[d.invoices||[],'invoices'];
-  }
-  if(C.kind==='agency'){
-    if(['drivers','covered-workers','mariners'].includes(p))return[d.employees||[],'employees'];
-    if(p==='programs')return[d.programs||[],'programs'];
-    if(p==='randoms')return[d.selections||[],'selections'];
-    if(p==='testing')return[d.testing_orders||[],'testing'];
-    if(['post-accident','serious-marine-incident','toxicology'].includes(p))return[d.post_accident_events||[],'accidents'];
-    if(p==='compliance')return[d.compliance_cases||[],'compliance'];
-    if(p==='documents')return[d.documents||[],'documents'];
-  }
-  if(p==='people')return[d.employees||[],'employees'];
-  if(p==='programs')return[d.programs||[],'programs'];
-  if(p==='pools')return[d.pools||[],'pools'];
-  if(p==='selections')return[d.selection_members||[],'selections'];
-  if(p==='testing')return[d.orders||d.testing_orders||[],'testing'];
-  if(p==='results')return[d.results||[],'results'];
-  if(p==='compliance')return[d.cases||d.compliance_cases||[],'compliance'];
-  if(p==='documents')return[d.documents||[],'documents'];
-  if(p==='notifications')return[d.notifications||[],'notifications'];
-  if(p==='billing')return[d.invoices||[],'invoices'];
-  if(p==='team')return[d.members||[],'members'];
-  return[[],null];
-}
-
-function wireSelfActions(p,d,ctx){
+  if(p==='employers')return table('Client Employers',data.employers||[],COLS.employers,r=>rowButtons(r,'employer'));
+  if(p==='people')return table('Employees / NON-DOT Drivers',data.employees||[],COLS.employees,r=>rowButtons(r,'employee'));
+  if(p==='programs')return table('NON-DOT Programs',data.programs||[],COLS.programs,r=>rowButtons(r,'program'));
+  if(p==='pools')return table('NON-DOT Random Testing Pools',data.pools||[],COLS.pools,r=>rowButtons(r,'pool'));
+  if(p==='selections')return table('NON-DOT Random Selections',data.selections||[],COLS.selections);
+  if(p==='testing')return table('NON-DOT Testing Orders',data.testing_orders||[],COLS.testing,r=>['created','assigned','employee_notified','scheduled'].includes(String(r.status))?`<button class="btn ghost" style="padding:6px 9px" data-cancel-testing="${esc(r.id)}" type="button">Cancel</button>`:'');
+  if(p==='results')return table('NON-DOT Testing Results',data.results||[],COLS.results);
+  if(p==='compliance')return `${table('NON-DOT Compliance Cases',data.cases||[],COLS.compliance)}${(data.tasks||[]).length?table('Compliance Tasks',data.tasks||[],[['Task',['title','task_type']],['Due',['due_at'],v=>fmt(v)],['Status',['status'],v=>badge(v)]]):''}`;
+  if(p==='documents')return table('Workforce Documents',data.documents||[],COLS.documents);
+  if(p==='notifications')return table('Notifications',data.notifications||[],COLS.notifications);
+  if(p==='team')return table('Users & Roles',data.members||[],COLS.members);
+  if(p==='locations')return table('Locations',data.locations||[],COLS.locations,r=>C.kind==='employer'?rowButtons(r,'location'):'');
+  if(p==='integrations')return table('Integrations',data.integrations||[],COLS.integrations);
+  if(p==='audit-history')return table('Audit History',data.audit_events||[],COLS.audit);
   if(p==='consents'){
-    const pending=(d.policies||[]).find(x=>!x.acknowledged_at);
-    if(pending)addAction('Acknowledge Required Policy',()=>modal('Acknowledge Policy',[{name:'acknowledged_name',label:'Type your full name',required:true}],async v=>invoke(C.api,{action:'acknowledge_policy',membership_id:stored(),acknowledgment_id:pending.id,acknowledged_name:v.acknowledged_name})));
+    const forms=data.forms||[],assignments=data.assignments||[];
+    return `${table('Consent & Acknowledgment Forms',forms,COLS.consents)}${assignments.length?`<div style="height:14px"></div>${table('Assignments',assignments,COLS.consents)}`:''}`;
   }
-  if(p==='credentials')addAction('Submit Credential',()=>modal('Submit Credential',[{name:'credential_type',label:'Credential type',required:true},{name:'credential_number',label:'Credential number'},{name:'issuing_state',label:'Issuing state'},{name:'expires_at',label:'Expiration date',type:'date'}],async v=>invoke(C.api,{action:'save_credential',membership_id:stored(),credential:v})));
-}
-function wireManagementActions(p,d,ctx){
-  if(C.kind==='agency'){
-    if(p==='agency-configuration'||['authorizations','contractors','random-plan','policy','anti-drug-plan','alcohol-misuse-plan','periodic-testing'].includes(p)){
-      const r=(d.registrations||[])[0]||{},cfg=r.configuration||{};
-      addAction('Edit Agency Configuration',()=>modal(`${C.agency} Configuration`,[{name:'account_identifier',label:'Agency account / identifier',value:r.account_identifier||''},{name:'employee_category',label:'Regulated category',value:r.employee_category||'general'},{name:'effective_date',label:'Effective date',type:'date',value:r.effective_date||new Date().toISOString().slice(0,10)}],async v=>invoke(C.api,{action:'save_agency_registration',agency_code:C.agency,registration:{agency_code:C.agency,...v,configuration:cfg,status:'active'}})));
-    }
-    if(p==='programs')addAction('Add Program',()=>modal(`Add ${C.agency} Program`,[{name:'name',label:'Program name',required:true},{name:'regulatory_category',label:'Regulatory category'},{name:'testing_method',label:'Testing method',value:'Urine / Breath'},{name:'effective_date',label:'Effective date',type:'date',value:new Date().toISOString().slice(0,10)}],async v=>invoke(C.api,{action:'save_agency_program',agency_code:C.agency,program:{regulatory_category:'workplace_testing',...v,status:'active'}})));
-    if(['drivers','covered-workers','mariners'].includes(p))addAction('Add Covered Worker',()=>modal('Add Covered Worker',[{name:'first_name',label:'First name',required:true},{name:'last_name',label:'Last name',required:true},{name:'employee_number',label:'Employee number'},{name:'email',label:'Email',type:'email'},{name:'job_title',label:'Safety-sensitive position'}],async v=>invoke(C.api,{action:'save_employee',employee:{...v,safety_sensitive:true,workforce_worker_type:'employee',employment_status:'active'}})));
-    return;
-  }
-  if(p==='people')addAction('Add Employee / NON-DOT Driver',()=>{
-    const fields=[];
-    if(C.kind==='ctpa')fields.push({name:'employer_id',label:'Client Employer',type:'select',required:true,options:(d.employers||[]).map(x=>({value:x.id,label:x.legal_name||x.dba_name||x.id}))});
-    fields.push({name:'first_name',label:'First name',required:true},{name:'last_name',label:'Last name',required:true},{name:'employee_number',label:'Employee number'},{name:'email',label:'Email',type:'email'});
-    fields.push({name:'job_title',label:'Job title'},{name:'workforce_worker_type',label:'Worker type',type:'select',value:'employee',options:[{value:'employee',label:'Employee'},{value:'driver',label:'NON-DOT Driver'}]},{name:'safety_sensitive',label:'Safety-sensitive',type:'select',value:'false',options:[{value:'false',label:'No'},{value:'true',label:'Yes'}]});
-    modal('Add Covered Worker',fields,async v=>{
-      if(C.kind==='ctpa')return invoke(C.api,{action:'save_employee',employee:{...v,employment_status:'active',safety_sensitive:String(v.safety_sensitive)==='true',workforce_worker_type:v.workforce_worker_type||'employee'}});
-      return invoke(C.api,{action:'save_employee',employee:{...v,employment_status:'active',safety_sensitive:String(v.safety_sensitive)==='true',workforce_worker_type:v.workforce_worker_type||'employee'}});
-    });
-  });
-  if(p==='programs')addAction('Add Program',()=>{
-    const fields=[];
-    if(C.kind==='ctpa')fields.push({name:'employer_id',label:'Client Employer',type:'select',required:true,options:(d.employers||[]).map(x=>({value:x.id,label:x.legal_name||x.dba_name||x.id}))});
-    fields.push({name:'name',label:'Program name',required:true},{name:'testing_method',label:'Testing method'},{name:'effective_date',label:'Effective date',type:'date',value:new Date().toISOString().slice(0,10)});
-    fields.push({name:'regulatory_category',label:'Program category',type:'select',value:'workplace_testing',options:[{value:'workplace_testing',label:'Workplace Testing'},{value:'drug_free_workplace',label:'Drug-Free Workplace'},{value:'safety_program',label:'Safety Program'},{value:'company_policy',label:'Company Policy'}]},{name:'testing_panel',label:'Testing panel'});
-    modal('Add Program',fields,async v=>{
-      const program={...v,program_type:'NON_DOT',status:'active'};
-      if(C.kind==='ctpa')return invoke(C.api,{action:'save_program',program});
-      return invoke(C.api,{action:'save_program',program});
-    });
-  });
-  if(p==='pools'&&!window.PortalPools)addAction('Add Pool',()=>{
-    const fields=[];
-    if(C.kind==='ctpa')fields.push({name:'employer_id',label:'Client Employer',type:'select',options:(d.employers||[]).map(x=>({value:x.id,label:x.legal_name||x.id}))});
-    fields.push({name:'name',label:'Pool name',required:true},{name:'pool_type',label:'Pool type',type:'select',value:C.kind==='ctpa'?'consortium':'employer',options:[{value:'employer',label:'Employer Pool'},{value:'consortium',label:'Consortium'}]},{name:'program_type',label:'Program type',type:'select',value:'NON_DOT',options:[{value:'NON_DOT',label:'NON-DOT'}]});
-    fields.push({name:'regulatory_category',label:'Program category',type:'select',value:'workplace_testing',options:[{value:'workplace_testing',label:'Workplace Testing'},{value:'drug_free_workplace',label:'Drug-Free Workplace'},{value:'safety_program',label:'Safety Program'},{value:'company_policy',label:'Company Policy'}]},{name:'testing_panel',label:'Testing panel'});
-    modal('Add Pool',fields,async v=>{
-      if(C.kind==='ctpa')return invoke(C.api,{action:'save_pool',pool:v});
-      return invoke(C.api,{action:'save_pool',pool:v});
-    });
-  });
+  if(p==='reports')return `<div class="panel"><div class="panel-head"><div><h2>NON-DOT Workforce Reports</h2><p>Reporting availability follows your selected Workforce plan and entitlements.</p></div></div><div style="padding:16px">${metrics([['Plan',ctx?.subscription?.plan_name||data?.subscription?.plan_name||'—','Current subscription'],['Business Surface','NON-DOT','Workforce'],['Portal',C.kind==='ctpa'?'C/TPA':'Employer','Management access'],['Status',pretty(ctx?.subscription?.status||data?.subscription?.status||'active'),'Subscription status']])}<div class="notice" style="margin-top:14px">This page is intentionally NON-DOT. DOT MIS and agency-specific reporting do not appear in the Workforce portal.</div></div></div>`;
+  if(p==='billing')return `${metrics([['Invoices',(data.invoices||[]).length,'Sent invoices'],['Outstanding',(data.outstanding||[]).length,'Balances due'],['Paid / Closed',(data.history||[]).length,'Invoice history'],['Surface','NON-DOT','Workforce billing']])}<div style="height:14px"></div>${table('Invoices',data.invoices||[],COLS.invoices,invoiceButtons)}`;
+  if(p==='branding')return `<div class="panel"><div class="panel-head"><div><h2>Portal Branding</h2><p>Branding used for your Workforce experience.</p></div></div><div style="padding:16px">${metrics([['Portal Name',data.branding?.portal_name||'screenings4u Workforce'],['Primary Color',data.branding?.primary_color||'Default'],['Accent Color',data.branding?.accent_color||'Default'],['Custom Domain',data.branding?.custom_domain||'Not configured']])}</div></div>`;
+  if(p==='company')return `<div class="panel"><div class="panel-head"><div><h2>${esc(data.employer?.legal_name||ctx?.membership?.organization_name||'Company')}</h2><p>NON-DOT Workforce company profile.</p></div></div><div style="padding:16px">${metrics([['Status',pretty(data.employer?.status||'active')],['State',data.employer?.state||'—'],['Phone',data.employer?.phone||'—'],['Plan',ctx?.subscription?.plan_name||'—']])}</div></div><div style="height:14px"></div>${table('Company Contacts',data.contacts||[],COLS.contacts)}`;
+  return '<div class="panel"><div class="empty">No records available.</div></div>';
 }
 
-async function render(ctx){
-  $('#actions').innerHTML='';const p=page();
-  let d;
-  if(C.kind==='self')d=await selfData();else if(C.kind==='ctpa')d=await ctpaData(p);else d=await employerData(p);
-  if(isUtilityPage(p))d=await utilityData(p);
-  if(C.kind==='self')setSubtitle('View your own records and complete only the actions assigned to you.');
-  else if(C.kind==='agency')setSubtitle(`${C.agency} company management workspace. Changes apply only to your company.`);
-  else setSubtitle(p==='dashboard'?'Company-wide snapshot of employers, testing, randoms, compliance, billing, and recent activity.':'Manage your company records, people, programs, testing and compliance.');
-  let html='';
-  if(isUtilityPage(p))html=renderUtilityPage(p,d);
-  else if(p==='dashboard')html=dashboard(ctx,d);
-  else if(p==='order_services'){
-    const cat=await serviceCatalog();
-    const cards=(cat.services||[]).map(s=>{const href=(cat.seller?.checkout_base||'https://screenings4u.com/')+String(s.order_url||'');return `<article class="service"><h3>${esc(s.name)}</h3><p>${esc(s.description||s.category||'NON-DOT service')}</p><div class="price">${s.amount==null?'Request quote':money(s.amount)}</div><div class="seller">Seller: ${esc(s.seller_legal_name||'screenings4u, LLC')}</div><a class="btn primary" href="${esc(href)}" target="_blank" rel="noopener">Order from screenings4u</a></article>`}).join('');
-    html=`<div class="notice">Services on this page are sold by <strong>screenings4u, LLC</strong>. This portal remains the compliance-management system.</div><div class="section service-grid">${cards}</div>`;
+function managementActions(p){
+  if(C.kind==='self')return;
+  if(C.kind==='ctpa'&&p==='employers')addAction('Add Employer',()=>formModal('Add Employer',employerFields,{},async v=>invoke(apiName(),{action:'save_employer',employer:v})));
+  if(p==='people')addAction('Add Employee / Driver',()=>formModal('Add Employee / NON-DOT Driver',employeeFields(data.employers||[]),{},async v=>invoke(apiName(),{action:'save_employee',employee:{...v,safety_sensitive:v.safety_sensitive==='true'}})));
+  if(p==='programs')addAction('Add NON-DOT Program',()=>formModal('Add NON-DOT Program',programFields(data.employers||[]),{},async v=>invoke(apiName(),{action:'save_program',program:v})));
+  if(p==='pools')addAction('Add NON-DOT Pool',()=>formModal('Add NON-DOT Random Testing Pool',poolFields(data.employers||[],data.programs||[]),{},async v=>invoke(apiName(),{action:'save_pool',pool:v})));
+  if(p==='testing')addAction('Create Testing Order',()=>formModal('Create NON-DOT Testing Order',[
+    ...(C.kind==='ctpa'?[{name:'employer_id',label:'Employer',type:'select',required:true,options:(data.employers||[]).map(x=>({value:x.id,label:x.legal_name||x.id}))}]:[]),
+    {name:'employee_id',label:'Employee / NON-DOT Driver',type:'select',required:true,options:(data.employees||[]).map(x=>({value:x.id,label:personName(x)=== '—'?x.id:personName(x)}))},
+    {name:'program_id',label:'NON-DOT Program',type:'select',required:true,options:(data.programs||[]).map(x=>({value:x.id,label:x.name||x.id}))},
+    {name:'reason',label:'Reason',type:'select',options:['pre_employment','random','reasonable_suspicion','post_accident','return_to_work','follow_up','other'].map(x=>({value:x,label:pretty(x)}))},
+    {name:'test_type',label:'Test type',type:'select',options:[{value:'drug',label:'Drug'},{value:'alcohol',label:'Alcohol'},{value:'drug_and_alcohol',label:'Drug + Alcohol'}]}
+  ],{},async v=>invoke(apiName(),{action:'create_testing',testing:v})));
+  if(C.kind==='employer'&&p==='locations')addAction('Add Location',()=>formModal('Add Location',locationFields,{},async v=>invoke(apiName(),{action:'save_location',location:v})));
   }
-  else if(C.kind==='ctpa'&&p==='order_history'&&window.AccountOrderHistory){setSubtitle('View and download receipts for your screenings4u NON-DOT Workforce C/TPA account.');html=window.AccountOrderHistory.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='subscription'&&window.AccountSubscription){setSubtitle('Review your current screenings4u NON-DOT Workforce C/TPA software subscription.');html=window.AccountSubscription.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='billing'&&window.AccountBilling){setSubtitle('View, download, and pay invoices issued to your C/TPA account by screenings4u.');html=window.AccountBilling.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='employer_billing'&&window.CtpaBilling){setSubtitle('Create, manage, download, and send invoices to your client Employers.');html=window.CtpaBilling.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='employers'&&window.CtpaEmployers){setSubtitle('Manage every client Employer, its NON-DOT company record, and who can access its Employer Portal.');html=window.CtpaEmployers.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='owner_operators'&&window.CtpaOwnerOperators){setSubtitle('Manage NON-DOT Driver customers sponsored by this C/TPA.');html=window.CtpaOwnerOperators.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='selections'&&window.CtpaSelections){setSubtitle('Run auditable random selections by consortium pool, create testing orders, export records, and deliver selections to Employer portals.');html=window.CtpaSelections.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='testing'&&window.CtpaTesting){setSubtitle('Create and monitor NON-DOT testing orders and their screenings4u fulfillment handoffs.');html=window.CtpaTesting.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='results'&&window.CtpaResults){setSubtitle('Review finalized screenings4u results, download reports, and release them to Employer portals.');html=window.CtpaResults.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='compliance'&&window.CtpaCompliance){setSubtitle('Monitor Employer compliance health, cases, documents, events, and communicate with client Employers.');html=window.CtpaCompliance.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='documents'&&window.CtpaDocuments){setSubtitle('Manage private C/TPA documents and securely view Employer-uploaded documents.');html=window.CtpaDocuments.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='reports'&&window.CtpaReports){setSubtitle('Analyze each client Employer across testing, random selections, compliance, documents, results, and operational activity.');html=window.CtpaReports.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='notifications'&&window.CtpaNotifications){setSubtitle('Review inbox conversations, action-center items, and notification delivery history.');html=window.CtpaNotifications.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='support'&&window.CtpaSupport){setSubtitle('Get help, create support requests, track ticket status, and find answers for common portal issues.');html=window.CtpaSupport.render(d,ctx);}
-  else if(p==='pools'&&window.PortalPools){setSubtitle(C.kind==='ctpa'?'Create consortium pools and manage eligible pool membership.':'Manage random pools and pool participation for this Employer.');html=window.PortalPools.render(d,ctx);}
-  else if(C.kind==='ctpa'&&p==='branding'&&window.CtpaBranding){setSubtitle('Control the logo and colors your sponsored Employers see in the NON-DOT Employer portal.');html=window.CtpaBranding.render(d,ctx);}
-  else if(C.kind==='self'){
-    if(p==='profile')html=profileView(d);
-    else if(p==='my-testing')html=table('My Testing',d.testing_orders||[],COLS.testing);
-    else if(p==='my-results')html=table('My Results',d.results||d.result_reports||[],COLS.results);
-    else if(p==='documents')html=table('My Documents',d.documents||[],COLS.documents);
-    else if(p==='credentials')html=table('My Credentials',d.credentials||[],COLS.credentials);
-    else if(p==='training')html=table('Training Records',d.training||[],COLS.training)+`<div class="section"><a class="btn primary" href="https://training.screenings4u.com/" target="_blank" rel="noopener">Open Training Portal</a></div>`;
-    else if(p==='consents')html=table('Consents & Acknowledgments',d.policies||[],COLS.policies);
-    else if(p==='medical')html=`<div class="notice">Medical records are view-only here. Use Order Services to purchase a workplace screening from screenings4u, LLC.</div><div class="section">${table('Credentials',d.credentials||[],COLS.credentials)}</div>`;
-    else html=dashboard(ctx,d);
-    wireSelfActions(p,d,ctx);
-  }
-  else if(C.kind==='agency'){
-    if(p==='company')html=profileView(d);
-    else if(p==='agency-configuration'||['authorizations','contractors','random-plan','policy','anti-drug-plan','alcohol-misuse-plan','periodic-testing'].includes(p)){
-      const r=(d.registrations||[])[0]||{};
-      html=`<div class="panel"><div class="panel-head"><div><h2>${esc(C.agency)} Configuration</h2><p>${esc(d.agency?.primary_regulation||'Program configuration')}</p></div></div><div style="padding:16px"><div class="metrics">${metric('Account',r.account_identifier||'—')}${metric('Category',pretty(r.employee_category||'—'))}${metric('Status',pretty(r.status||'Not configured'))}${metric('Effective',fmt(r.effective_date))}</div><div class="section notice">${esc(d.agency?.metadata?.covered_workforce||'Agency-specific employer configuration.')}</div></div></div>`;
-    }
-    else if(p==='mis-reports'||p==='reports')html=`<div class="metrics">${metric('Testing',(d.testing_orders||[]).length)}${metric('Programs',(d.programs||[]).length)}${metric('Random Events',(d.selections||[]).length)}${metric('Compliance',(d.compliance_cases||[]).length)}</div>`;
-    else {const [rows,key]=pickManagementRows(p,d);html=key?table(cfgPage(p).label,rows,COLS[key]):`<div class="panel"><div class="empty">No records available.</div></div>`}
-    wireManagementActions(p,d,ctx);
-  }
-  else {
-    if(p==='company')html=profileView(d);
-    else if(p==='reports')html=`<div class="metrics">${metric('Testing',(d.testing||d.testing_orders||[]).length)}${metric('Programs',(d.program_enrollment||d.programs||[]).length)}${metric('Pools',(d.pool_membership||d.pools||[]).length)}${metric('Compliance',(d.compliance||d.cases||[]).length)}</div>`;
-    else if(p==='post-accident')html=`<div class="notice">Post-accident activity is managed through Testing and Compliance. NON-DOT service purchases are available from Order Services.</div><div class="section">${table('Post-Accident Testing',(d.testing_orders||[]).filter(x=>norm(x.reason)==='post_accident'),COLS.testing)}</div>`;
-    else {const [rows,key]=pickManagementRows(p,d);html=key?table(cfgPage(p).label,rows,COLS[key]):`<div class="panel"><div class="empty">No records available.</div></div>`}
-    wireManagementActions(p,d,ctx);
-  }
-  $('#content').innerHTML=html||`<div class="panel"><div class="empty">No data available.</div></div>`;
-  if(isUtilityPage(p))bindUtilityPage(p,d,ctx);
-  if(p==='order_history'&&window.AccountOrderHistory)window.AccountOrderHistory.bind(d,ctx);
-  if(p==='subscription'&&window.AccountSubscription)window.AccountSubscription.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='billing'&&window.AccountBilling)window.AccountBilling.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='employer_billing'&&window.CtpaBilling)window.CtpaBilling.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='employers'&&window.CtpaEmployers)window.CtpaEmployers.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='owner_operators'&&window.CtpaOwnerOperators)window.CtpaOwnerOperators.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='selections'&&window.CtpaSelections)window.CtpaSelections.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='testing'&&window.CtpaTesting)window.CtpaTesting.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='results'&&window.CtpaResults)window.CtpaResults.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='compliance'&&window.CtpaCompliance)window.CtpaCompliance.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='documents'&&window.CtpaDocuments)window.CtpaDocuments.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='reports'&&window.CtpaReports)window.CtpaReports.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='notifications'&&window.CtpaNotifications)window.CtpaNotifications.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='support'&&window.CtpaSupport)window.CtpaSupport.bind(d,ctx);
-  if(p==='pools'&&window.PortalPools)window.PortalPools.bind(d,ctx);
-  if(C.kind==='ctpa'&&p==='branding'&&window.CtpaBranding)window.CtpaBranding.bind(d,ctx);
+function subtitleFor(p){
+  const common={
+    dashboard:C.kind==='self'?'Your secure NON-DOT Workforce self-service dashboard.':C.kind==='ctpa'?'Manage customer Employers and their NON-DOT workforce programs, pools, testing, results, and compliance.':'Manage your company’s NON-DOT workforce program, employees / drivers, testing, and compliance.',
+    employers:'Manage customer Employer accounts under your NON-DOT Workforce C/TPA program.',
+    company:'Review your company profile and Workforce contacts.',
+    people:'Manage Employees and NON-DOT Drivers participating in your Workforce program.',
+    programs:'Create and manage company-policy NON-DOT testing programs. These programs are not DOT-regulated.',
+    pools:'Manage NON-DOT random testing pools, rates, and selection schedules.',
+    selections:'Review NON-DOT random selection events.',
+    testing:'Create and track NON-DOT testing orders under company policy.',
+    results:'Review NON-DOT testing results available to this account.',
+    compliance:'Track company-policy NON-DOT compliance cases and follow-up tasks.',
+    documents:'Review documents associated with the NON-DOT Workforce program.',
+    consents:'Review and complete company-policy consents and acknowledgments.',
+    reports:'Review reporting available for the NON-DOT Workforce program.',
+    notifications:'Review Workforce notifications and delivery activity.',
+    billing:'Review NON-DOT Workforce invoices and balances.',
+    services:'Purchase screenings4u NON-DOT testing services for your Employees and NON-DOT Drivers.',
+    team:'Review portal users and roles.',
+    locations:'Manage Workforce locations.',
+    branding:'Review Workforce portal branding.',
+    integrations:'Review Workforce integrations available to this account.',
+    'audit-history':'Review account activity recorded for the Workforce portal.',
+    profile:'Review your NON-DOT Workforce profile.',
+    'my-testing':'Review NON-DOT testing assigned to you.',
+    'my-results':'Review NON-DOT testing results available to you.',
+    training:'Review your Workforce training records.',
+    credentials:'Review credentials maintained for your NON-DOT Driver profile.'
+  };
+  return common[p]||'Manage NON-DOT Workforce information for this portal.';
 }
-
-async function init(){
-  try{const s=await getSession();if(!s){location.replace('/login.html');return}const ctx=await access();if(ctx.requires_workspace_selection){location.replace('/workspace.html');return}if(!ctx.has_access)throw new Error(ctx.reason||'Portal access denied.');saveCtx(ctx.membership?.id,ctx.subscription?.id||'');window.portalCtx=ctx;shell(ctx);await render(ctx)}
-  catch(e){if(e.status===401||e.message==='AUTH_REQUIRED'){await sb.auth.signOut();location.replace('/login.html');return}document.body.className='login-page';document.body.innerHTML=`<main class="login-card"><img class="login-logo" src="/images/logo.png"><h1>Portal unavailable</h1><p>${esc(e.message||String(e))}</p><a class="btn primary" href="/login.html">Return to login</a></main>`}
+async function refresh(){
+  if(page()==='services'){const q=new URLSearchParams(location.search);if(q.get('checkout')==='return'&&q.get('session_id')){const sid=q.get('session_id');history.replaceState({},'',location.pathname);setTimeout(async()=>{try{const st=await invokeMain({action:'status',session_id:sid});if(String(st.payment_status)==='paid'||String(st.status)==='complete'){await brandedMessage('Payment received','Your payment is complete and the testing request is being linked to your Workforce account.','success');await refresh()}else await brandedMessage('Payment processing','Stripe is still confirming this payment. Your purchase will appear here when processing finishes.')}catch(err){await brandedMessage('Payment status unavailable',err.message||String(err))}},80)}}
+  try{
+    data=await load();
+    if($('#actions'))$('#actions').innerHTML='';
+    const p=norm(page());
+    if($('#subtitle'))$('#subtitle').textContent=subtitleFor(p);
+    if($('#content'))$('#content').innerHTML=C.kind==='self'?renderSelf(p):renderMgmt(p);
+    managementActions(p);bindRows();
+    $$('[data-cancel-testing]').forEach(b=>b.onclick=async()=>{const ok=await confirmBox('Cancel Testing Order','Cancel this NON-DOT testing order? Completed testing history is not removed.');if(!ok)return;try{await invoke(apiName(),{action:'cancel_testing',id:b.dataset.cancelTesting});notice('Testing order cancelled.','good');await refresh()}catch(err){notice(err.message||String(err))}});
+    $$('[data-consent]').forEach(b=>b.onclick=()=>formModal('Complete Consent / Acknowledgment',[{name:'acknowledged_name',label:'Type your full name',required:true},{name:'accepted',label:'I acknowledge and accept',type:'select',options:[{value:'true',label:'Yes'}]}],{},async v=>invoke(apiName(),{action:'complete_consent_assignment',assignment_id:b.dataset.consent,acknowledged_name:v.acknowledged_name,accepted:v.accepted==='true'})));
+  }catch(err){notice(err.message||String(err));if($('#content'))$('#content').innerHTML='<div class="panel"><div class="empty">Unable to load this page.</div></div>'}
+  finally{document.body.classList.remove('loading')}
 }
-window.Portal={invoke,sb,refresh:()=>render(window.portalCtx)};
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+async function boot(){
+  try{
+    ctx=await access();
+    if(ctx.requires_workspace_selection){location.replace('/workspace.html');return}
+    if(ctx.membership?.id)localStorage.setItem(storageKey(),ctx.membership.id);
+    if(ctx.subscription?.id)localStorage.setItem(subKey(),ctx.subscription.id);
+    shell(ctx);window.portalCtx=ctx;await refresh();
+  }catch(err){
+    const msg=String(err?.message||err||'');
+    if(/unauthorized|session|jwt|sign in/i.test(msg)){location.replace('/login.html');return}
+    document.body.className='';
+    document.body.innerHTML=`<main class="login-page"><section class="login-card"><img class="login-logo" src="/assets/img/logo.png" alt="screenings4u"><h1>Portal unavailable</h1><p>${esc(msg||'This NON-DOT Workforce portal could not be loaded.')}</p><a class="btn primary" href="/login.html">Return to sign in</a></section></main>`;
+  }
+}
+boot();
 })();
