@@ -1,0 +1,3 @@
+-- NON-DOT Workforce support is isolated to workforce_support_tickets and NON-DOT Workforce messaging.
+-- This package does not write support requests into another service's support tables.
+-- The live C/TPA frontend sends support actions to nondot-ctpa-portal.

@@ -1,0 +1,5 @@
+-- NON-DOT Workforce counterpart of the C/TPA client invoicing migration.
+-- Uses the existing workforce_ctpa_client_invoices, workforce_ctpa_client_invoice_items,
+-- workforce_ctpa_client_invoice_payments, workforce_ctpa_client_invoice_payment_links,
+-- workforce_ctpa_payment_processor_profiles, and workforce_ctpa_remittance_profiles tables.
+-- No other-service tables are created or modified by this package.

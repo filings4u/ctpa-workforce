@@ -1,0 +1,2 @@
+-- System Status remains a platform-wide read-only page.
+-- No service-specific customer or compliance data is read by status.html.
